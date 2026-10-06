@@ -8,11 +8,22 @@ import {
   X,
   FolderPlus,
 } from 'lucide-react';
-import { GmAsset, GmAssetCategory } from '../types/deltaGreen';
+import {
+  GmAsset,
+  GmAssetCategory,
+  DocumentVisualStyle,
+  DocumentFontStyle,
+} from '../types/deltaGreen';
 
 interface AddToGmLibraryModalProps {
   imageUrl: string;
   defaultTitle?: string;
+  defaultCategory?: GmAssetCategory;
+  defaultSubtitle?: string;
+  defaultPublicContent?: string;
+  defaultDocStyle?: DocumentVisualStyle;
+  defaultDocFont?: DocumentFontStyle;
+  defaultDocSignature?: string;
   onSaveToGmLibrary: (
     draft: Omit<GmAsset, 'id' | 'ownerId' | 'gameSystem' | 'updatedAt'>
   ) => Promise<string | void>;
@@ -63,14 +74,21 @@ const LIBRARY_CATEGORY_OPTIONS: {
 export const AddToGmLibraryModal: React.FC<AddToGmLibraryModalProps> = ({
   imageUrl,
   defaultTitle = '',
+  defaultCategory = 'document',
+  defaultSubtitle = '',
+  defaultPublicContent = '',
+  defaultDocStyle = 'official-document',
+  defaultDocFont = 'typewriter',
+  defaultDocSignature = '',
   onSaveToGmLibrary,
   onClose,
 }) => {
   const [selectedCategory, setSelectedCategory] =
-    useState<GmAssetCategory>('npc');
+    useState<GmAssetCategory>(defaultCategory);
   const [customTitle, setCustomTitle] = useState<string>(defaultTitle);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeCategoryMeta =
     LIBRARY_CATEGORY_OPTIONS.find((c) => c.id === selectedCategory) ||
@@ -78,25 +96,38 @@ export const AddToGmLibraryModal: React.FC<AddToGmLibraryModalProps> = ({
 
   const handleConfirmSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!imageUrl || isSaving) return;
+    if (isSaving) return;
+    setSaveError(null);
 
     setIsSaving(true);
     try {
       await onSaveToGmLibrary({
         category: selectedCategory,
         title: customTitle.trim() || activeCategoryMeta.defaultName,
-        subtitle: '',
-        imageUrl,
-        publicContent: '',
+        subtitle: defaultSubtitle,
+        imageUrl: imageUrl || '',
+        publicContent: defaultPublicContent,
         gmSecretNotes: '',
-        docStyle: selectedCategory === 'document' ? 'official-document' : '',
-        docFont: selectedCategory === 'document' ? 'typewriter' : '',
-        docSignature: '',
+        docStyle:
+          selectedCategory === 'document'
+            ? defaultDocStyle || 'official-document'
+            : '',
+        docFont:
+          selectedCategory === 'document' ? defaultDocFont || 'typewriter' : '',
+        docSignature:
+          selectedCategory === 'document' ? defaultDocSignature : '',
       });
       setSavedSuccess(true);
       window.setTimeout(() => {
         onClose();
       }, 900);
+    } catch (err) {
+      console.error('Error adding to GM Library:', err);
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save to GM Library. Please try again.'
+      );
     } finally {
       setIsSaving(false);
     }
@@ -114,10 +145,10 @@ export const AddToGmLibraryModal: React.FC<AddToGmLibraryModalProps> = ({
         <div className="flex items-center justify-between border-b border-[#232B28] pb-3">
           <div>
             <div className="font-mono-tabular text-[11px] text-[#4ADE80] uppercase font-semibold">
-              SAVE SHARED IMAGE TO GM LIBRARY
+              SAVE TO GM LIBRARY
             </div>
             <h3 className="font-display text-lg font-bold text-[#E2E6E4]">
-              Turn Image into GM Library Object
+              Save Item to GM Library Database
             </h3>
           </div>
           <button
@@ -129,19 +160,29 @@ export const AddToGmLibraryModal: React.FC<AddToGmLibraryModalProps> = ({
           </button>
         </div>
 
-        {/* Image Thumbnail Preview */}
+        {saveError && (
+          <div className="bg-[#DC2626]/15 border border-[#DC2626] text-[#F87171] px-3 py-2 rounded text-xs font-mono-tabular">
+            {saveError}
+          </div>
+        )}
+
+        {/* Image / Document Preview */}
         <div className="flex items-center gap-4 bg-[#0B0E0D] border border-[#232B28] p-3 rounded">
-          <img
-            src={imageUrl}
-            alt="Shared preview"
-            referrerPolicy="no-referrer"
-            className="w-20 h-20 object-cover rounded border border-[#232B28] shrink-0 bg-[#121715]"
-          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt="Shared preview"
+              referrerPolicy="no-referrer"
+              className="w-20 h-20 object-cover rounded border border-[#232B28] shrink-0 bg-[#121715]"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded border border-[#232B28] bg-[#121715] flex items-center justify-center shrink-0 text-[#4ADE80]">
+              <FileText size={24} />
+            </div>
+          )}
           <div className="text-xs text-[#A5B0AC] leading-relaxed">
-            Pick a category below. We will automatically populate the{' '}
-            <strong className="text-[#E2E6E4]">image section</strong> of the new
-            card and leave the remaining fields blank so you can fill them in
-            later in your Game Master Library.
+            Pick a category below to save this handout or image directly into
+            your permanent <strong className="text-[#E2E6E4]">Game Master Library</strong>.
           </div>
         </div>
 

@@ -251,6 +251,8 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
   const [qcDocFont, setQcDocFont] = useState<DocumentFontStyle>('typewriter');
   const [qcSignature, setQcSignature] = useState('');
   const [qcSaveToDb, setQcSaveToDb] = useState<boolean>(true);
+  const [qcError, setQcError] = useState<string | null>(null);
+  const [qcSaving, setQcSaving] = useState<boolean>(false);
 
   // Combat & Clocks inputs
   const [newCombatantName, setNewCombatantName] = useState('');
@@ -497,13 +499,40 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
     });
   };
 
-  const handleQuickCreateAndBroadcast = async (e: React.FormEvent) => {
+  const deriveQuickCreateTitle = (): string => {
+    const cleanTitle = qcTitle.trim();
+    if (cleanTitle) return cleanTitle;
+
+    const firstLine = qcContent
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0);
+    if (firstLine) {
+      return firstLine.slice(0, 70);
+    }
+
+    if (qcCategory === 'document') {
+      const styleObj = DOCUMENT_VISUAL_STYLES.find((s) => s.id === qcDocStyle);
+      return styleObj ? styleObj.label : 'Styled Document';
+    }
+    if (qcCategory === 'npc') return 'Unnamed NPC';
+    if (qcCategory === 'location') return 'Unnamed Location';
+    return 'Archive Image';
+  };
+
+  const handleQuickCreateAndBroadcast = async (
+    e: React.FormEvent,
+    broadcastToPlayers = true
+  ) => {
     e.preventDefault();
-    if (!qcTitle.trim()) return;
+    if (qcSaving) return;
+    setQcError(null);
+
+    const resolvedTitle = deriveQuickCreateTitle();
 
     const draft = {
       category: qcCategory,
-      title: qcTitle.trim(),
+      title: resolvedTitle,
       subtitle: qcSubtitle.trim(),
       imageUrl: qcImageUrl.trim(),
       publicContent: qcContent,
@@ -513,28 +542,42 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
       docSignature: qcCategory === 'document' ? qcSignature.trim() : '',
     };
 
-    if (qcSaveToDb) {
-      await onCreateGmAsset(draft);
+    setQcSaving(true);
+    try {
+      if (qcSaveToDb || !broadcastToPlayers) {
+        await onCreateGmAsset(draft);
+      }
+
+      if (broadcastToPlayers) {
+        await handleShareAssetToSession(
+          {
+            ...draft,
+            id: `qc-${Date.now()}`,
+            ownerId: user.uid,
+            gameSystem: 'delta-green',
+            updatedAt: new Date().toISOString(),
+          },
+          true
+        );
+      }
+
+      setQcTitle('');
+      setQcSubtitle('');
+      setQcImageUrl('');
+      setQcContent('');
+      setQcSecret('');
+      setQcSignature('');
+      setActiveTab(broadcastToPlayers ? 'overview' : 'gm-database');
+    } catch (err) {
+      console.error('Error saving quick-create handout:', err);
+      setQcError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save styled document to GM Database.'
+      );
+    } finally {
+      setQcSaving(false);
     }
-
-    await handleShareAssetToSession(
-      {
-        ...draft,
-        id: `qc-${Date.now()}`,
-        ownerId: user.uid,
-        gameSystem: 'delta-green',
-        updatedAt: new Date().toISOString(),
-      },
-      true
-    );
-
-    setQcTitle('');
-    setQcSubtitle('');
-    setQcImageUrl('');
-    setQcContent('');
-    setQcSecret('');
-    setQcSignature('');
-    setActiveTab('overview');
   };
 
   // 4. Combat Tracker & Threat Clocks Helpers
@@ -1527,17 +1570,22 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
             </div>
 
             <form
-              onSubmit={handleQuickCreateAndBroadcast}
+              onSubmit={(e) => handleQuickCreateAndBroadcast(e, true)}
               className="grid grid-cols-1 lg:grid-cols-12 gap-6"
             >
               <div className="lg:col-span-6 space-y-3.5">
+                {qcError && (
+                  <div className="bg-[#DC2626]/15 border border-[#DC2626] text-[#F87171] px-3 py-2 rounded text-xs font-mono-tabular">
+                    {qcError}
+                  </div>
+                )}
+
                 <div>
                   <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                    TITLE / NAME *
+                    TITLE / NAME (AUTO-FILLED IF LEFT BLANK)
                   </label>
                   <input
                     type="text"
-                    required
                     value={qcTitle}
                     onChange={(e) => setQcTitle(e.target.value)}
                     placeholder="e.g., Stained Motel Note / Deputy Sheriff Miller..."
@@ -1692,13 +1740,30 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                     <span>Return to Live Session Table</span>
                   </button>
 
-                  <button
-                    type="submit"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
-                  >
-                    <Send size={14} />
-                    <span>Broadcast to Players & Return to Live Session Table</span>
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={qcSaving}
+                      onClick={(e) => handleQuickCreateAndBroadcast(e, false)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#16A34A] text-[#4ADE80] text-xs font-mono-tabular font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      <Check size={14} />
+                      <span>{qcSaving ? 'Saving...' : 'Save to GM Database Only'}</span>
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={qcSaving}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer disabled:opacity-60"
+                    >
+                      <Send size={14} />
+                      <span>
+                        {qcSaving
+                          ? 'Saving...'
+                          : 'Broadcast to Players & Return to Live Session Table'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>

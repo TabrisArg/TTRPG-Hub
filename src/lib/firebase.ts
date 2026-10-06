@@ -25,10 +25,7 @@ import {
   SessionRollEntry,
   SharedSessionItem,
 } from '../types/deltaGreen';
-import {
-  STARTER_GM_ASSETS,
-  buildStarterSessionSharedItems,
-} from '../data/starterGmAssets';
+import { STARTER_GM_ASSETS } from '../data/starterGmAssets';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -336,14 +333,14 @@ export async function createGmAsset(
       ownerId: safeStr(ownerId, 128),
       gameSystem: 'delta-green',
       category: asset.category,
-      title: safeStr(asset.title.trim() || 'Untitled Asset', 200),
-      subtitle: safeStr(asset.subtitle, 200),
-      imageUrl: safeStr(asset.imageUrl, 700000),
-      publicContent: safeStr(asset.publicContent, 10000),
-      gmSecretNotes: safeStr(asset.gmSecretNotes, 5000),
+      title: safeStr((asset.title || '').trim() || 'Untitled Asset', 200),
+      subtitle: safeStr(asset.subtitle, 300),
+      imageUrl: safeStr(asset.imageUrl, 850000),
+      publicContent: safeStr(asset.publicContent, 25000),
+      gmSecretNotes: safeStr(asset.gmSecretNotes, 15000),
       docStyle: asset.category === 'document' ? asset.docStyle || 'official-document' : '',
       docFont: asset.category === 'document' ? asset.docFont || 'typewriter' : '',
-      docSignature: safeStr(asset.docSignature, 200),
+      docSignature: safeStr(asset.docSignature, 300),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -360,14 +357,14 @@ export async function updateGmAsset(asset: GmAsset): Promise<void> {
   try {
     const mutablePayload = {
       category: asset.category,
-      title: safeStr(asset.title.trim() || 'Untitled Asset', 200),
-      subtitle: safeStr(asset.subtitle, 200),
-      imageUrl: safeStr(asset.imageUrl, 700000),
-      publicContent: safeStr(asset.publicContent, 10000),
-      gmSecretNotes: safeStr(asset.gmSecretNotes, 5000),
+      title: safeStr((asset.title || '').trim() || 'Untitled Asset', 200),
+      subtitle: safeStr(asset.subtitle, 300),
+      imageUrl: safeStr(asset.imageUrl, 850000),
+      publicContent: safeStr(asset.publicContent, 25000),
+      gmSecretNotes: safeStr(asset.gmSecretNotes, 15000),
       docStyle: asset.category === 'document' ? asset.docStyle || 'official-document' : '',
       docFont: asset.category === 'document' ? asset.docFont || 'typewriter' : '',
-      docSignature: safeStr(asset.docSignature, 200),
+      docSignature: safeStr(asset.docSignature, 300),
       updatedAt: serverTimestamp(),
     };
     await updateDoc(doc(db, 'gmAssets', docId), mutablePayload);
@@ -476,28 +473,10 @@ export async function createGameSession(params: {
     )
   ).slice(0, 20);
 
-  const starterItems = buildStarterSessionSharedItems();
-  const initialDate = params.sessionDate?.trim() || 'October 14, 1998 // 2200 HRS';
+  const initialDate = params.sessionDate?.trim() || '';
 
-  // Prepend an initial date separator in the timeline if a date is specified
-  const initialTimeline: SharedSessionItem[] = [
-    {
-      id: `timeskip-init-${Date.now()}`,
-      entryType: 'timeskip',
-      category: 'document',
-      title: `Session Date: ${initialDate}`,
-      subtitle: 'SESSION START DATE',
-      imageUrl: '',
-      publicContent: '',
-      docStyle: '',
-      docFont: '',
-      docSignature: '',
-      sharedAt: 'START',
-      authorName: params.gmName || 'Handler',
-      authorRole: 'GM',
-    },
-    ...starterItems,
-  ];
+  // Start new sessions with a clean, empty shared timeline (do not auto-share starter items)
+  const initialTimeline: SharedSessionItem[] = [];
 
   try {
     const payload = {
@@ -512,25 +491,17 @@ export async function createGameSession(params: {
       joinedPlayers: [],
       sceneState: {
         title: params.title.trim() || 'Operational Briefing',
-        location: 'Green Box #094 — Storage Unit 14B',
+        location: '',
         dateTime: safeStr(initialDate, 120),
         alertLevel: 'NORMAL',
         publicNotes: params.description.slice(0, 500),
       },
-      spotlightItem: starterItems[3] || starterItems[0] || {},
-      sharedItems: initialTimeline.slice(0, 100),
+      spotlightItem: {},
+      sharedItems: initialTimeline,
       publicRolls: [],
       privateRolls: [],
       combatTracker: [],
-      clocks: [
-        {
-          id: `clk-starter-${Date.now()}`,
-          name: 'Containment Protocol Timer (Example)',
-          filled: 1,
-          segments: 6,
-          isPublic: true,
-        },
-      ],
+      clocks: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

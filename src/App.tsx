@@ -216,7 +216,7 @@ export default function App() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  // 2. Subscribe to the user's Game Master Assets (/gmAssets) and seed starter assets once
+  // 2. Subscribe to the user's Game Master Assets (/gmAssets) — empty by default
   useEffect(() => {
     if (authLoading || !user) return;
 
@@ -224,8 +224,6 @@ export default function App() {
       collection(db, 'gmAssets'),
       where('ownerId', '==', user.uid)
     );
-
-    const seedFlagKey = `dg_starter_gm_assets_seeded_v1_${user.uid}`;
 
     const unsubscribe = onSnapshot(
       q,
@@ -235,20 +233,6 @@ export default function App() {
           loaded.push(mapFirestoreDocToGmAsset(docSnap.id, docSnap.data()));
         });
         setGmAssets(loaded);
-
-        if (loaded.length === 0) {
-          try {
-            const alreadySeeded = localStorage.getItem(seedFlagKey);
-            if (!alreadySeeded) {
-              localStorage.setItem(seedFlagKey, 'true');
-              seedStarterGmAssetsInDatabase(user.uid).catch((err) =>
-                console.error('Error seeding starter GM assets:', err)
-              );
-            }
-          } catch {
-            // ignore storage errors
-          }
-        }
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'gmAssets');
@@ -570,9 +554,6 @@ export default function App() {
     if (!user) return;
     setIsSyncing(true);
     try {
-      if (gmAssets.length === 0) {
-        await seedStarterGmAssetsInDatabase(user.uid);
-      }
       const sessionId = await createGameSession({
         gmId: user.uid,
         gmName: user.displayName || user.email || 'Handler',

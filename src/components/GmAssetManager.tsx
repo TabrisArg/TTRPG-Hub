@@ -100,6 +100,8 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
   const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
   const [zoomAsset, setZoomAsset] = useState<GmAsset | null>(null);
   const [justSharedAsset, setJustSharedAsset] = useState<GmAsset | null>(null);
+  const [isSavingAsset, setIsSavingAsset] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Draft form state
   const [category, setCategory] = useState<GmAssetCategory>('document');
@@ -151,22 +153,72 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const dataUrl = String(ev.target?.result || '');
-      if (dataUrl) {
-        setImageUrl(dataUrl);
-      }
+      const rawDataUrl = String(ev.target?.result || '');
+      if (!rawDataUrl) return;
+      // Compress large uploaded photos so they stay well below Firestore's 1MB document limit
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 960;
+        let w = img.naturalWidth || 800;
+        let h = img.naturalHeight || 600;
+        if (w > maxDim || h > maxDim) {
+          const scale = Math.min(maxDim / w, maxDim / h);
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.82);
+          setImageUrl(compressed);
+        } else {
+          setImageUrl(rawDataUrl);
+        }
+      };
+      img.onerror = () => {
+        setImageUrl(rawDataUrl);
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
 
+  const deriveFallbackTitle = (): string => {
+    const trimmedTitle = title.trim();
+    if (trimmedTitle) return trimmedTitle;
+
+    const firstContentLine = publicContent
+      .trim()
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0);
+    if (firstContentLine) {
+      return firstContentLine.slice(0, 70);
+    }
+
+    if (category === 'document') {
+      const styleObj = DOCUMENT_VISUAL_STYLES.find((s) => s.id === docStyle);
+      return styleObj ? styleObj.label : 'Styled Document';
+    }
+    if (category === 'npc') return 'Unnamed NPC';
+    if (category === 'location') return 'Unnamed Location';
+    return 'Archive Image';
+  };
+
   const handleSaveForm = async (e: React.FormEvent, shareImmediately = false) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (isSavingAsset) return;
+    setSaveError(null);
+
+    const resolvedTitle = deriveFallbackTitle();
 
     const payload = {
       category,
-      title: title.trim(),
+      title: resolvedTitle,
       subtitle: subtitle.trim(),
       imageUrl: imageUrl.trim(),
       publicContent,
@@ -176,36 +228,48 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
       docSignature: category === 'document' ? docSignature.trim() : '',
     };
 
-    if (editingId) {
-      const updated: GmAsset = {
-        ...payload,
-        id: editingId,
-        ownerId: '',
-        gameSystem: 'delta-green',
-        updatedAt: new Date().toISOString(),
-      };
-      await onUpdateAsset(updated);
-      if (shareImmediately && onShareAssetToSession) {
-        await onShareAssetToSession(updated, true);
-        setJustSharedAsset(updated);
+    setIsSavingAsset(true);
+    try {
+      if (editingId) {
+        const updated: GmAsset = {
+          ...payload,
+          id: editingId,
+          ownerId: '',
+          gameSystem: 'delta-green',
+          updatedAt: new Date().toISOString(),
+        };
+        await onUpdateAsset(updated);
+        if (shareImmediately && onShareAssetToSession) {
+          await onShareAssetToSession(updated, true);
+          setJustSharedAsset(updated);
+        }
+      } else {
+        const createdId = await onCreateAsset(payload);
+        const createdObj: GmAsset = {
+          ...payload,
+          id: typeof createdId === 'string' ? createdId : `temp-${Date.now()}`,
+          ownerId: '',
+          gameSystem: 'delta-green',
+          updatedAt: new Date().toISOString(),
+        };
+        if (shareImmediately && onShareAssetToSession) {
+          await onShareAssetToSession(createdObj, true);
+          setJustSharedAsset(createdObj);
+        }
       }
-    } else {
-      const createdId = await onCreateAsset(payload);
-      const createdObj: GmAsset = {
-        ...payload,
-        id: typeof createdId === 'string' ? createdId : `temp-${Date.now()}`,
-        ownerId: '',
-        gameSystem: 'delta-green',
-        updatedAt: new Date().toISOString(),
-      };
-      if (shareImmediately && onShareAssetToSession) {
-        await onShareAssetToSession(createdObj, true);
-        setJustSharedAsset(createdObj);
-      }
-    }
 
-    setShowCreateForm(false);
-    resetForm();
+      setShowCreateForm(false);
+      resetForm();
+    } catch (err) {
+      console.error('Error saving GM asset:', err);
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save asset to GM Database. Please check your connection or image size.'
+      );
+    } finally {
+      setIsSavingAsset(false);
+    }
   };
 
   const renderCategoryIcon = (cat: GmAssetCategory) => {
@@ -476,11 +540,11 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
               type="button"
               disabled={isSyncing}
               onClick={onRestoreStarterAssets}
-              title="Restore the default Delta Green example assets to your database"
+              title="Create example Delta Green assets in your GM database"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#121715] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#A5B0AC] hover:text-[#E2E6E4] cursor-pointer"
             >
-              <RotateCcw size={13} className="text-[#4ADE80]" />
-              <span>Restore Example Assets</span>
+              <Plus size={13} className="text-[#4ADE80]" />
+              <span>Create Example Assets</span>
             </button>
           )}
         </div>
@@ -529,16 +593,15 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
               <div>
                 <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
                   {category === 'npc'
-                    ? 'NPC NAME / ALIAS *'
+                    ? 'NPC NAME / ALIAS'
                     : category === 'location'
-                    ? 'LOCATION NAME *'
+                    ? 'LOCATION NAME'
                     : category === 'image'
-                    ? 'IMAGE / EXHIBIT TITLE *'
-                    : 'DOCUMENT HEADER / TITLE *'}
+                    ? 'IMAGE / EXHIBIT TITLE'
+                    : 'DOCUMENT HEADER / TITLE (OPTIONAL — AUTO-FILLED IF BLANK)'}
                 </label>
                 <input
                   type="text"
-                  required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={
@@ -744,12 +807,19 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                 </div>
               </div>
 
+              {saveError && (
+                <div className="mt-3 p-3 rounded bg-[#DC2626]/15 border border-[#DC2626] text-xs font-mono-tabular text-[#F87171]">
+                  {saveError}
+                </div>
+              )}
+
               <div className="mt-6 pt-3 border-t border-[#232B28] flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowCreateForm(false);
                     resetForm();
+                    setSaveError(null);
                   }}
                   className="px-3.5 py-2 rounded bg-[#121715] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#A5B0AC] hover:text-[#E2E6E4] cursor-pointer"
                 >
@@ -758,19 +828,29 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
 
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-[#16A34A] hover:bg-[#15803D] text-xs font-mono-tabular font-semibold text-white cursor-pointer"
+                  disabled={isSavingAsset}
+                  className="px-4 py-2 rounded bg-[#16A34A] hover:bg-[#15803D] disabled:opacity-60 text-xs font-mono-tabular font-semibold text-white cursor-pointer"
                 >
-                  {editingId ? 'Save Changes to Database' : 'Save to GM Database'}
+                  {isSavingAsset
+                    ? 'Saving...'
+                    : editingId
+                    ? 'Save Changes to Database'
+                    : 'Save to GM Database'}
                 </button>
 
                 {hasActiveSession && onShareAssetToSession && (
                   <button
                     type="button"
+                    disabled={isSavingAsset}
                     onClick={(e) => handleSaveForm(e, true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#D97706] hover:bg-[#B45309] text-xs font-mono-tabular font-semibold text-white cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#D97706] hover:bg-[#B45309] disabled:opacity-60 text-xs font-mono-tabular font-semibold text-white cursor-pointer"
                   >
                     <Send size={13} />
-                    <span>Save & Share to Live Session</span>
+                    <span>
+                      {isSavingAsset
+                        ? 'Saving & Sharing...'
+                        : 'Save & Share to Live Session'}
+                    </span>
                   </button>
                 )}
 

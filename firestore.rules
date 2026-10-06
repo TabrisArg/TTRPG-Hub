@@ -189,13 +189,13 @@ service cloud.firestore {
         && data.gameSystem is string && data.gameSystem.size() <= 40 && data.gameSystem in ['delta-green']
         && data.category is string && data.category.size() <= 30 && data.category in ['npc', 'location', 'image', 'document']
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
-        && data.subtitle is string && data.subtitle.size() <= 200
-        && data.imageUrl is string && data.imageUrl.size() <= 700000
-        && data.publicContent is string && data.publicContent.size() <= 10000
-        && data.gmSecretNotes is string && data.gmSecretNotes.size() <= 5000
+        && data.subtitle is string && data.subtitle.size() <= 300
+        && data.imageUrl is string && data.imageUrl.size() <= 850000
+        && data.publicContent is string && data.publicContent.size() <= 25000
+        && data.gmSecretNotes is string && data.gmSecretNotes.size() <= 15000
         && data.docStyle is string && data.docStyle.size() <= 40 && data.docStyle in ['official-document', 'bloody-letter', 'napkin-note', 'old-computer', 'small-sign', 'large-sign', 'fantasy-scroll', 'night-sky', 'pond-water', 'clouds-sky', '']
         && data.docFont is string && data.docFont.size() <= 40 && data.docFont in ['mono', 'typewriter', 'handwritten', 'terminal', 'serif', 'display', 'cloud', 'fantasy', '']
-        && data.docSignature is string && data.docSignature.size() <= 200
+        && data.docSignature is string && data.docSignature.size() <= 300
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }

@@ -274,10 +274,16 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
       )}
 
       {/* Add to GM Library Modal */}
-      {libraryTargetItem && libraryTargetItem.imageUrl && onSaveToGmLibrary && (
+      {libraryTargetItem && onSaveToGmLibrary && (
         <AddToGmLibraryModal
-          imageUrl={libraryTargetItem.imageUrl}
+          imageUrl={libraryTargetItem.imageUrl || ''}
           defaultTitle={libraryTargetItem.title}
+          defaultCategory={libraryTargetItem.category || 'document'}
+          defaultSubtitle={libraryTargetItem.subtitle || ''}
+          defaultPublicContent={libraryTargetItem.publicContent || ''}
+          defaultDocStyle={libraryTargetItem.docStyle || 'official-document'}
+          defaultDocFont={libraryTargetItem.docFont || 'typewriter'}
+          defaultDocSignature={libraryTargetItem.docSignature || ''}
           onSaveToGmLibrary={onSaveToGmLibrary}
           onClose={() => setLibraryTargetItem(null)}
         />
@@ -714,11 +720,11 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
                       </button>
                     )}
 
-                    {item.imageUrl && onSaveToGmLibrary && (
+                    {onSaveToGmLibrary && (
                       <button
                         type="button"
                         onClick={() => setLibraryTargetItem(item)}
-                        title="Turn this shared image into an NPC, Location, Image, or Document in your GM Library"
+                        title="Save this shared handout or image to your GM Library"
                         className="inline-flex items-center justify-center gap-1 h-7 px-2.5 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#232B28] text-[11px] font-mono-tabular text-[#E2E6E4] hover:text-[#4ADE80] whitespace-nowrap shrink-0 cursor-pointer"
                       >
                         <FolderPlus size={12} className="text-[#4ADE80] shrink-0" />
