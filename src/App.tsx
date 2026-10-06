@@ -57,6 +57,7 @@ import {
 import { RpgHubScreen } from './components/RpgHubScreen';
 import { GmSessionScreen } from './components/GmSessionScreen';
 import { PlayerSessionOverlayBar } from './components/PlayerSessionOverlayBar';
+import { D20Icon } from './components/D20Icon';
 import { ThemeSelectorDropdown } from './components/ThemeSelectorDropdown';
 import { PersonalDataSection } from './components/PersonalDataSection';
 import { StatisticalAndPsychSection } from './components/StatisticalAndPsychSection';
@@ -814,9 +815,10 @@ export default function App() {
             setViewMode('hub');
           }}
           title="Return to TTRPG Hub"
-          className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4] whitespace-nowrap shrink-0"
+          className="inline-flex items-center gap-2 font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4] whitespace-nowrap shrink-0"
         >
-          TTRPG Hub
+          <D20Icon size={22} className="text-[#4ADE80] shrink-0" />
+          <span>TTRPG Hub</span>
         </a>
 
         {/* Zone 2: 5 Clean Text Page Navigation Links */}

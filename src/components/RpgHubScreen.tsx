@@ -29,6 +29,7 @@ import { ThemeSelectorDropdown } from './ThemeSelectorDropdown';
 import { getThemeMeta } from '../utils/themes';
 import { GmAssetManager } from './GmAssetManager';
 import { ImageZoomModal } from './ImageZoomModal';
+import { D20Icon } from './D20Icon';
 
 export type SelectedGameTab = 'characters' | 'sessions' | 'gm-section';
 
@@ -244,9 +245,12 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
         className="min-h-screen bg-[#0B0E0D] text-[#E2E6E4] flex flex-col justify-between"
       >
         <header className="bg-[#070908]/95 border-b border-[#232B28] px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
-          <span className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4]">
-            TTRPG Hub
-          </span>
+          <div className="inline-flex items-center gap-2.5">
+            <D20Icon size={24} className="text-[#4ADE80] shrink-0" />
+            <span className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4]">
+              TTRPG Hub
+            </span>
+          </div>
           <ThemeSelectorDropdown
             theme={visualTheme}
             onChangeTheme={onChangeTheme}
@@ -255,8 +259,8 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
 
         <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-md w-full border-2 border-[#16A34A] bg-[#121715] p-6 sm:p-8 space-y-6 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded bg-[#0B0E0D] border border-[#232B28] text-[#4ADE80] mx-auto">
-              <Shield size={24} />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded bg-[#0B0E0D] border border-[#232B28] text-[#4ADE80] mx-auto">
+              <D20Icon size={32} />
             </div>
 
             <div className="space-y-2">
@@ -330,9 +334,10 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
               e.preventDefault();
               setSelectedGame(null);
             }}
-            className="font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4] whitespace-nowrap"
+            className="inline-flex items-center gap-2 font-display text-lg sm:text-xl font-extrabold tracking-tight text-[#E2E6E4] whitespace-nowrap"
           >
-            TTRPG Hub
+            <D20Icon size={24} className="text-[#4ADE80] shrink-0" />
+            <span>TTRPG Hub</span>
           </a>
 
           {selectedGame === 'delta-green' && (
