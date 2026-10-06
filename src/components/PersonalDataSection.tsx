@@ -9,6 +9,50 @@ interface PersonalDataSectionProps {
   onUpdate: (updater: (prev: AgentCharacter) => AgentCharacter) => void;
 }
 
+function parseAgeAndDob(raw: string): { age: string; dob: string } {
+  if (!raw) return { age: '', dob: '' };
+  const isoMatch = raw.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  let dob = isoMatch ? isoMatch[1] : '';
+
+  if (!dob) {
+    // Try parsing legacy parenthesized or slash-separated dates e.g. "(Nov 14, 1986)"
+    const parenMatch = raw.match(/\(([^)]+)\)/);
+    const slashParts = raw.split('//');
+    const candidateDateStr = parenMatch
+      ? parenMatch[1].trim()
+      : slashParts.length > 1
+      ? slashParts[1].trim()
+      : '';
+    if (candidateDateStr) {
+      const parsed = new Date(candidateDateStr);
+      if (!isNaN(parsed.getTime())) {
+        const y = parsed.getFullYear();
+        const m = String(parsed.getMonth() + 1).padStart(2, '0');
+        const d = String(parsed.getDate()).padStart(2, '0');
+        if (y >= 1900 && y <= 2100) {
+          dob = `${y}-${m}-${d}`;
+        }
+      }
+    }
+  }
+
+  // Extract leading age digits (excluding a 4-digit year)
+  const withoutIso = raw.replace(/\b\d{4}-\d{2}-\d{2}\b/g, '').trim();
+  const ageMatch = withoutIso.match(/^\s*(\d{1,3})\b/);
+  const age = ageMatch ? ageMatch[1] : '';
+
+  return { age, dob };
+}
+
+function formatAgeAndDob(age: string, dob: string): string {
+  const cleanAge = age.replace(/\D/g, '').slice(0, 3);
+  const cleanDob = dob.trim();
+  if (cleanAge && cleanDob) return `${cleanAge} // ${cleanDob}`;
+  if (cleanAge) return cleanAge;
+  if (cleanDob) return `// ${cleanDob}`;
+  return '';
+}
+
 export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
   agent,
   onUpdate,
@@ -184,13 +228,48 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
               <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1.5">
                 6. AGE AND D.O.B.
               </label>
-              <input
-                type="text"
-                value={agent.ageAndDob}
-                onChange={(e) => handleField('ageAndDob', e.target.value)}
-                placeholder="AGE // YYYY-MM-DD"
-                className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-sm font-mono-tabular text-[#E2E6E4] focus:outline-none transition-colors"
-              />
+              {(() => {
+                const { age, dob } = parseAgeAndDob(agent.ageAndDob);
+                return (
+                  <div className="grid grid-cols-12 gap-2">
+                    <div className="col-span-4">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={3}
+                        aria-label="Agent Age"
+                        value={age}
+                        onChange={(e) => {
+                          const nextAge = e.target.value
+                            .replace(/\D/g, '')
+                            .slice(0, 3);
+                          handleField(
+                            'ageAndDob',
+                            formatAgeAndDob(nextAge, dob)
+                          );
+                        }}
+                        placeholder="AGE"
+                        className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-2 text-sm font-mono-tabular text-center text-[#E2E6E4] focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div className="col-span-8">
+                      <input
+                        type="date"
+                        aria-label="Agent Date of Birth"
+                        value={dob}
+                        onChange={(e) => {
+                          handleField(
+                            'ageAndDob',
+                            formatAgeAndDob(age, e.target.value)
+                          );
+                        }}
+                        className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-2 text-sm font-mono-tabular text-[#E2E6E4] focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

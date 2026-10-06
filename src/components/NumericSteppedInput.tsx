@@ -99,7 +99,7 @@ export const NumericSteppedInput: React.FC<NumericSteppedInputProps> = ({
 
   return (
     <div
-      className={`inline-flex items-center bg-[#0B0E0D] border rounded transition-colors select-none ${colorClasses} ${sizeStyles.wrapper} ${
+      className={`inline-flex items-center bg-[#0B0E0D] border rounded transition-colors ${colorClasses} ${sizeStyles.wrapper} ${
         disabled ? 'opacity-50 pointer-events-none' : ''
       }`}
       title="Click -/+ to adjust by 1 (Shift+Click for ±5), or type a specific value"
@@ -109,30 +109,30 @@ export const NumericSteppedInput: React.FC<NumericSteppedInputProps> = ({
         onClick={(e) => handleAdjust(-step, e)}
         disabled={disabled || value <= min}
         aria-label={`Decrease ${ariaLabel}`}
-        className={`${sizeStyles.btn} flex items-center justify-center text-[#8C9692] hover:text-[#E2E6E4] hover:bg-[#19201E] active:bg-[#232B28] disabled:opacity-30 disabled:hover:bg-transparent transition-colors border-r border-[#232B28] cursor-pointer`}
+        className={`${sizeStyles.btn} select-none flex items-center justify-center text-[#8C9692] hover:text-[#E2E6E4] hover:bg-[#19201E] active:bg-[#232B28] disabled:opacity-30 disabled:hover:bg-transparent transition-colors border-r border-[#232B28] cursor-pointer`}
       >
         <Minus size={sizeStyles.icon} strokeWidth={2.2} />
       </button>
 
       <div className="relative flex items-center justify-center">
         <input
-          type="number"
+          type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
           aria-label={ariaLabel}
           value={draft}
           disabled={disabled}
-          onFocus={(e) => {
+          onFocus={() => {
             setIsFocused(true);
-            e.target.select();
           }}
           onBlur={handleBlur}
           onChange={handleInputChange}
-          className={`${sizeStyles.input} font-mono-tabular text-center bg-transparent focus:outline-none px-1 ${
+          className={`${sizeStyles.input} select-text font-mono-tabular text-center bg-transparent focus:outline-none px-1 ${
             suffix ? 'pr-3.5' : ''
           }`}
         />
         {suffix && (
-          <span className="pointer-events-none absolute right-1 text-[10px] font-mono-tabular text-[#68736E]">
+          <span className="pointer-events-none select-none absolute right-1 text-[10px] font-mono-tabular text-[#68736E]">
             {suffix}
           </span>
         )}
@@ -143,7 +143,7 @@ export const NumericSteppedInput: React.FC<NumericSteppedInputProps> = ({
         onClick={(e) => handleAdjust(step, e)}
         disabled={disabled || value >= max}
         aria-label={`Increase ${ariaLabel}`}
-        className={`${sizeStyles.btn} flex items-center justify-center text-[#8C9692] hover:text-[#E2E6E4] hover:bg-[#19201E] active:bg-[#232B28] disabled:opacity-30 disabled:hover:bg-transparent transition-colors border-l border-[#232B28] cursor-pointer`}
+        className={`${sizeStyles.btn} select-none flex items-center justify-center text-[#8C9692] hover:text-[#E2E6E4] hover:bg-[#19201E] active:bg-[#232B28] disabled:opacity-30 disabled:hover:bg-transparent transition-colors border-l border-[#232B28] cursor-pointer`}
       >
         <Plus size={sizeStyles.icon} strokeWidth={2.2} />
       </button>

@@ -162,6 +162,83 @@ export default function App() {
     }
   }, []);
 
+  // Ensure seamless switching between Apple Pencil (Scribble) and Finger Touch (Virtual Keyboard) on iPadOS
+  useEffect(() => {
+    let lastPointerType = 'mouse';
+
+    const handlePointerDown = (e: PointerEvent) => {
+      lastPointerType = e.pointerType || 'mouse';
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Only promote virtual keyboard when the user taps with a finger ('touch'), not with Apple Pencil ('pen')
+      if (lastPointerType === 'pen') return;
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const editable = target.closest(
+        'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="file"]):not([type="range"]):not([type="color"]), textarea'
+      ) as HTMLInputElement | HTMLTextAreaElement | null;
+
+      if (!editable || editable.disabled || editable.readOnly) return;
+
+      // Ensure an explicit inputMode is present so iPadOS WebKit knows which software keyboard to summon
+      if (!editable.getAttribute('inputmode')) {
+        if (editable instanceof HTMLInputElement && editable.type === 'number') {
+          editable.setAttribute('inputmode', 'numeric');
+        } else if (
+          editable instanceof HTMLInputElement &&
+          editable.type !== 'date'
+        ) {
+          editable.setAttribute('inputmode', 'text');
+        } else if (editable instanceof HTMLTextAreaElement) {
+          editable.setAttribute('inputmode', 'text');
+        }
+      }
+
+      // If iPadOS kept the element focused from a prior Apple Pencil Scribble session without showing
+      // the full software keyboard, cycling blur() -> focus() synchronously inside touchend forces
+      // WebKit to exit Pencil Scribble mode and open the on-screen virtual keyboard.
+      if (document.activeElement === editable) {
+        const selStart =
+          typeof editable.selectionStart === 'number'
+            ? editable.selectionStart
+            : null;
+        const selEnd =
+          typeof editable.selectionEnd === 'number'
+            ? editable.selectionEnd
+            : null;
+        editable.blur();
+        editable.focus();
+        try {
+          if (selStart !== null && selEnd !== null) {
+            editable.setSelectionRange(selStart, selEnd);
+          }
+        } catch {
+          // ignore on input types that do not support selection ranges
+        }
+      } else {
+        editable.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, {
+      passive: true,
+      capture: true,
+    });
+    document.addEventListener('touchend', handleTouchEnd, {
+      passive: true,
+    });
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, {
+        capture: true,
+      });
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   // Track Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {

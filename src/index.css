@@ -164,6 +164,26 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
+  /* Ensure iPadOS / iOS virtual keyboard works with both finger touch and Apple Pencil */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    -webkit-touch-callout: default;
+    touch-action: manipulation;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(0.8);
+  }
+
+  [data-theme="default-light"] input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.2);
+  }
+
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
