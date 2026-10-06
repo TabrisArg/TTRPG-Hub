@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Upload, Trash2, Link2, UserSquare2, ZoomIn } from 'lucide-react';
 import { AgentCharacter } from '../types/deltaGreen';
 import { ImageZoomModal } from './ImageZoomModal';
+import { WebImageSearchPicker } from './WebImageSearchPicker';
 
 interface PersonalDataSectionProps {
   agent: AgentCharacter;
@@ -295,6 +296,17 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                 <Link2 size={13} />
                 <span>Image URL</span>
               </button>
+
+              <WebImageSearchPicker
+                currentImageUrl={agent.portraitUrl || ''}
+                defaultQuery={
+                  agent.fullNameAndAlias || agent.professionAndRank || 'portrait'
+                }
+                onSelectImageUrl={(url) => {
+                  setImgError(false);
+                  handleField('portraitUrl', url);
+                }}
+              />
 
               {agent.portraitUrl && (
                 <button

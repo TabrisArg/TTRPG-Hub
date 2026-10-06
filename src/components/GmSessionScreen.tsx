@@ -45,6 +45,7 @@ import {
 import { GmAssetManager } from './GmAssetManager';
 import { PlayerSessionOverlayBar } from './PlayerSessionOverlayBar';
 import { ImageZoomModal } from './ImageZoomModal';
+import { WebImageSearchPicker } from './WebImageSearchPicker';
 import { SessionMessageBoard } from './SessionMessageBoard';
 import { PersonalDataSection } from './PersonalDataSection';
 import { StatisticalAndPsychSection } from './StatisticalAndPsychSection';
@@ -1617,20 +1618,27 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <div>
-                    <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                      IMAGE URL (OPTIONAL)
-                    </label>
+                ) : null}
+
+                <div className="space-y-2">
+                  <label className="block font-mono-tabular text-[11px] text-[#8C9692]">
+                    IMAGE URL OR WEB IMAGE SEARCH (OPTIONAL)
+                  </label>
+                  <div className="flex flex-wrap gap-2">
                     <input
                       type="text"
                       value={qcImageUrl}
                       onChange={(e) => setQcImageUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full bg-[#0B0E0D] border border-[#232B28] rounded px-3 py-1.5 text-xs text-[#E2E6E4]"
+                      placeholder="Paste https:// image URL or click Image Search..."
+                      className="flex-1 min-w-[180px] bg-[#0B0E0D] border border-[#232B28] rounded px-3 py-1.5 text-xs text-[#E2E6E4]"
+                    />
+                    <WebImageSearchPicker
+                      currentImageUrl={qcImageUrl}
+                      defaultQuery={qcTitle}
+                      onSelectImageUrl={(url) => setQcImageUrl(url)}
                     />
                   </div>
-                )}
+                </div>
 
                 <div>
                   <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">

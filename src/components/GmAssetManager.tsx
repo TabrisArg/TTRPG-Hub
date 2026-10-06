@@ -27,6 +27,7 @@ import {
   StyledHandoutRenderer,
 } from './StyledHandoutRenderer';
 import { ImageZoomModal } from './ImageZoomModal';
+import { WebImageSearchPicker } from './WebImageSearchPicker';
 
 interface GmAssetManagerProps {
   gmAssets: GmAsset[];
@@ -644,18 +645,18 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                 </div>
               )}
 
-              {/* Image Upload / URL for NPC, Location, Archive Image, or Document */}
-              <div>
-                <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                  IMAGE URL OR UPLOAD PHOTO
+              {/* Image Upload / URL / Search for NPC, Location, Archive Image, or Document */}
+              <div className="space-y-2">
+                <label className="block font-mono-tabular text-[11px] text-[#8C9692]">
+                  IMAGE URL, UPLOAD PHOTO, OR WEB IMAGE SEARCH
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <input
                     type="text"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="Paste image URL or upload from device..."
-                    className="flex-1 bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                    placeholder="Paste image URL, upload from device, or click Image Search..."
+                    className="flex-1 min-w-[180px] bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
                   />
                   <button
                     type="button"
@@ -671,6 +672,11 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                     accept="image/*"
                     onChange={handleImageFileUpload}
                     className="hidden"
+                  />
+                  <WebImageSearchPicker
+                    currentImageUrl={imageUrl}
+                    defaultQuery={title}
+                    onSelectImageUrl={(url) => setImageUrl(url)}
                   />
                 </div>
               </div>
