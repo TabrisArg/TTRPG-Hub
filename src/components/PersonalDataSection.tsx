@@ -236,6 +236,7 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                       <input
                         type="text"
                         inputMode="numeric"
+                        data-numpad="true"
                         pattern="[0-9]*"
                         maxLength={3}
                         aria-label="Agent Age"
@@ -258,13 +259,20 @@ export const PersonalDataSection: React.FC<PersonalDataSectionProps> = ({
                         type="date"
                         aria-label="Agent Date of Birth"
                         value={dob}
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {
+                            // ignore if already open or unsupported
+                          }
+                        }}
                         onChange={(e) => {
                           handleField(
                             'ageAndDob',
                             formatAgeAndDob(age, e.target.value)
                           );
                         }}
-                        className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-2 text-sm font-mono-tabular text-[#E2E6E4] focus:outline-none transition-colors"
+                        className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-2 text-sm font-mono-tabular text-[#E2E6E4] focus:outline-none transition-colors cursor-pointer"
                       />
                     </div>
                   </div>

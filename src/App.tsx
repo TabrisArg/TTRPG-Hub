@@ -64,6 +64,7 @@ import { StatisticalAndPsychSection } from './components/StatisticalAndPsychSect
 import { ApplicableSkillSetsSection } from './components/ApplicableSkillSetsSection';
 import { InjuriesAndEquipmentSection } from './components/InjuriesAndEquipmentSection';
 import { RemarksSection } from './components/RemarksSection';
+import { TouchVirtualKeyboard } from './components/TouchVirtualKeyboard';
 
 const STORAGE_KEY_VISUAL_THEME = 'rpg_vault_visual_theme_v1';
 
@@ -160,83 +161,6 @@ export default function App() {
     } catch {
       // ignore
     }
-  }, []);
-
-  // Ensure seamless switching between Apple Pencil (Scribble) and Finger Touch (Virtual Keyboard) on iPadOS
-  useEffect(() => {
-    let lastPointerType = 'mouse';
-
-    const handlePointerDown = (e: PointerEvent) => {
-      lastPointerType = e.pointerType || 'mouse';
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      // Only promote virtual keyboard when the user taps with a finger ('touch'), not with Apple Pencil ('pen')
-      if (lastPointerType === 'pen') return;
-
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-
-      const editable = target.closest(
-        'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="file"]):not([type="range"]):not([type="color"]), textarea'
-      ) as HTMLInputElement | HTMLTextAreaElement | null;
-
-      if (!editable || editable.disabled || editable.readOnly) return;
-
-      // Ensure an explicit inputMode is present so iPadOS WebKit knows which software keyboard to summon
-      if (!editable.getAttribute('inputmode')) {
-        if (editable instanceof HTMLInputElement && editable.type === 'number') {
-          editable.setAttribute('inputmode', 'numeric');
-        } else if (
-          editable instanceof HTMLInputElement &&
-          editable.type !== 'date'
-        ) {
-          editable.setAttribute('inputmode', 'text');
-        } else if (editable instanceof HTMLTextAreaElement) {
-          editable.setAttribute('inputmode', 'text');
-        }
-      }
-
-      // If iPadOS kept the element focused from a prior Apple Pencil Scribble session without showing
-      // the full software keyboard, cycling blur() -> focus() synchronously inside touchend forces
-      // WebKit to exit Pencil Scribble mode and open the on-screen virtual keyboard.
-      if (document.activeElement === editable) {
-        const selStart =
-          typeof editable.selectionStart === 'number'
-            ? editable.selectionStart
-            : null;
-        const selEnd =
-          typeof editable.selectionEnd === 'number'
-            ? editable.selectionEnd
-            : null;
-        editable.blur();
-        editable.focus();
-        try {
-          if (selStart !== null && selEnd !== null) {
-            editable.setSelectionRange(selStart, selEnd);
-          }
-        } catch {
-          // ignore on input types that do not support selection ranges
-        }
-      } else {
-        editable.focus();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown, {
-      passive: true,
-      capture: true,
-    });
-    document.addEventListener('touchend', handleTouchEnd, {
-      passive: true,
-    });
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, {
-        capture: true,
-      });
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
   }, []);
 
   // Track Auth state
@@ -806,61 +730,67 @@ export default function App() {
   // Render GM Session Console if in 'gm-session' viewMode
   if (viewMode === 'gm-session' && user && activeGmSession) {
     return (
-      <GmSessionScreen
-        user={user}
-        visualTheme={visualTheme}
-        onChangeTheme={setVisualTheme}
-        session={activeGmSession}
-        sessionCharacters={sessionCharacters}
-        gmAssets={gmAssets}
-        onUpdateSession={handleUpdateGmSession}
-        onCreateGmAsset={handleCreateGmAsset}
-        onUpdateGmAsset={handleUpdateGmAsset}
-        onDeleteGmAsset={handleDeleteGmAsset}
-        onRestoreStarterAssets={handleRestoreStarterAssets}
-        onBackToHub={() => setViewMode('hub')}
-        isSyncing={isSyncing}
-      />
+      <>
+        <GmSessionScreen
+          user={user}
+          visualTheme={visualTheme}
+          onChangeTheme={setVisualTheme}
+          session={activeGmSession}
+          sessionCharacters={sessionCharacters}
+          gmAssets={gmAssets}
+          onUpdateSession={handleUpdateGmSession}
+          onCreateGmAsset={handleCreateGmAsset}
+          onUpdateGmAsset={handleUpdateGmAsset}
+          onDeleteGmAsset={handleDeleteGmAsset}
+          onRestoreStarterAssets={handleRestoreStarterAssets}
+          onBackToHub={() => setViewMode('hub')}
+          isSyncing={isSyncing}
+        />
+        <TouchVirtualKeyboard />
+      </>
     );
   }
 
   // Render Main RPG Hub Screen if viewMode is 'hub' or if not signed in / no active character
   if (viewMode === 'hub' || !user || !activeAgent) {
     return (
-      <RpgHubScreen
-        user={user}
-        authLoading={authLoading}
-        dbLoading={dbLoading}
-        visualTheme={visualTheme}
-        onChangeTheme={setVisualTheme}
-        onSignIn={handleSignIn}
-        onSignOut={handleSignOut}
-        agents={agents}
-        activeAgentId={activeAgent?.id || ''}
-        onSelectAgentAndOpenGame={(agentId) => {
-          setActiveAgentId(agentId);
-          setViewMode('delta-green');
-        }}
-        onCreateBlankAgent={handleCreateNewBlankAgent}
-        onDeleteAgent={handleDeleteAgent}
-        hostedSessions={hostedSessions}
-        invitedSessions={invitedSessions}
-        gmAssets={gmAssets}
-        onCreateGmSession={handleCreateGmSession}
-        onOpenGmSession={(sessionId) => {
-          setActiveSessionId(sessionId);
-          setViewMode('gm-session');
-        }}
-        onDeleteGmSession={handleDeleteGmSession}
-        onJoinInvitedSession={handleJoinInvitedSession}
-        onCreateGmAsset={handleCreateGmAsset}
-        onUpdateGmAsset={handleUpdateGmAsset}
-        onDeleteGmAsset={handleDeleteGmAsset}
-        activeGmSession={activeGmSession || hostedSessions[0] || null}
-        onShareAssetToActiveSession={handleShareAssetToActiveSession}
-        onRestoreStarterAssets={handleRestoreStarterAssets}
-        isSyncing={isSyncing}
-      />
+      <>
+        <RpgHubScreen
+          user={user}
+          authLoading={authLoading}
+          dbLoading={dbLoading}
+          visualTheme={visualTheme}
+          onChangeTheme={setVisualTheme}
+          onSignIn={handleSignIn}
+          onSignOut={handleSignOut}
+          agents={agents}
+          activeAgentId={activeAgent?.id || ''}
+          onSelectAgentAndOpenGame={(agentId) => {
+            setActiveAgentId(agentId);
+            setViewMode('delta-green');
+          }}
+          onCreateBlankAgent={handleCreateNewBlankAgent}
+          onDeleteAgent={handleDeleteAgent}
+          hostedSessions={hostedSessions}
+          invitedSessions={invitedSessions}
+          gmAssets={gmAssets}
+          onCreateGmSession={handleCreateGmSession}
+          onOpenGmSession={(sessionId) => {
+            setActiveSessionId(sessionId);
+            setViewMode('gm-session');
+          }}
+          onDeleteGmSession={handleDeleteGmSession}
+          onJoinInvitedSession={handleJoinInvitedSession}
+          onCreateGmAsset={handleCreateGmAsset}
+          onUpdateGmAsset={handleUpdateGmAsset}
+          onDeleteGmAsset={handleDeleteGmAsset}
+          activeGmSession={activeGmSession || hostedSessions[0] || null}
+          onShareAssetToActiveSession={handleShareAssetToActiveSession}
+          onRestoreStarterAssets={handleRestoreStarterAssets}
+          isSyncing={isSyncing}
+        />
+        <TouchVirtualKeyboard />
+      </>
     );
   }
 
@@ -1278,6 +1208,7 @@ export default function App() {
           )}
         </div>
       </main>
+      <TouchVirtualKeyboard />
     </div>
   );
 }
