@@ -16,6 +16,8 @@ import {
   CloudUpload,
   LayoutGrid,
   Trash2,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -64,7 +66,6 @@ import { StatisticalAndPsychSection } from './components/StatisticalAndPsychSect
 import { ApplicableSkillSetsSection } from './components/ApplicableSkillSetsSection';
 import { InjuriesAndEquipmentSection } from './components/InjuriesAndEquipmentSection';
 import { RemarksSection } from './components/RemarksSection';
-import { TouchVirtualKeyboard } from './components/TouchVirtualKeyboard';
 
 const STORAGE_KEY_VISUAL_THEME = 'rpg_vault_visual_theme_v1';
 
@@ -149,6 +150,11 @@ export default function App() {
   const [invitedSessions, setInvitedSessions] = useState<GameSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>('');
   const [sessionCharacters, setSessionCharacters] = useState<AgentCharacter[]>([]);
+  const [pendingDeleteConfirm, setPendingDeleteConfirm] = useState<
+    | { type: 'character'; id: string; title: string }
+    | { type: 'session'; id: string; title: string }
+    | null
+  >(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
@@ -161,6 +167,175 @@ export default function App() {
     } catch {
       // ignore
     }
+  }, []);
+
+  // Native iPadOS Finger Touch (default virtual keyboard) vs. Apple Pencil handler
+  // - When using the Apple Pencil (pointerType === 'pen'): sets inputmode="none" so the virtual keyboard is NEVER shown.
+  // - When using Finger Touch (pointerType === 'touch') on a text box: sets inputmode="text"/"numeric" so the virtual keyboard pops up.
+  useEffect(() => {
+    let lastPointerType = 'mouse';
+
+    const isKeyboardTextInput = (
+      el: Element | null
+    ): el is HTMLInputElement | HTMLTextAreaElement => {
+      if (!el) return false;
+      if (el instanceof HTMLTextAreaElement) {
+        return !el.readOnly && !el.disabled;
+      }
+      if (el instanceof HTMLInputElement) {
+        if (el.readOnly || el.disabled) return false;
+        const nonKeyboardTypes = new Set([
+          'checkbox',
+          'radio',
+          'file',
+          'button',
+          'submit',
+          'reset',
+          'range',
+          'color',
+          'date',
+          'time',
+          'datetime-local',
+          'month',
+          'week',
+          'hidden',
+        ]);
+        return !nonKeyboardTypes.has(el.type);
+      }
+      return false;
+    };
+
+    const getDesiredInputMode = (
+      el: HTMLInputElement | HTMLTextAreaElement
+    ): string => {
+      if (
+        el.getAttribute('data-numpad') === 'true' ||
+        el.dataset.originalInputMode === 'numeric' ||
+        el.inputMode === 'numeric' ||
+        (el instanceof HTMLInputElement && el.type === 'number')
+      ) {
+        el.dataset.originalInputMode = 'numeric';
+        return 'numeric';
+      }
+      if (el instanceof HTMLInputElement && el.type === 'email') {
+        return 'email';
+      }
+      return 'text';
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      lastPointerType = e.pointerType || 'mouse';
+      const targetEl = e.target instanceof Element ? e.target : null;
+      const editable = targetEl?.closest('input, textarea') || null;
+      const activeEl = document.activeElement;
+
+      if (e.pointerType === 'pen') {
+        // Hide the virtual keyboard whenever the user uses the Apple Pencil
+        if (isKeyboardTextInput(activeEl)) {
+          getDesiredInputMode(activeEl); // preserve dataset.originalInputMode if numeric
+          activeEl.setAttribute('inputmode', 'none');
+          activeEl.inputMode = 'none';
+          if (activeEl !== editable) {
+            activeEl.blur();
+          }
+        }
+        if (isKeyboardTextInput(editable)) {
+          getDesiredInputMode(editable); // preserve dataset.originalInputMode if numeric
+          editable.setAttribute('inputmode', 'none');
+          editable.inputMode = 'none';
+          if (document.activeElement === editable) {
+            // Force iPadOS to dismiss any open virtual keyboard while keeping Pencil focus
+            editable.blur();
+            editable.focus();
+          }
+        } else {
+          window.getSelection()?.removeAllRanges();
+        }
+        return;
+      }
+
+      if (e.pointerType === 'touch' && isKeyboardTextInput(editable)) {
+        const desired = getDesiredInputMode(editable);
+        // Prime an inputmode change so WebKit calls reloadInputViews on touchend/click
+        editable.setAttribute(
+          'inputmode',
+          desired === 'numeric' ? 'tel' : 'search'
+        );
+      }
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      const targetEl = e.target instanceof Element ? e.target : null;
+      if (!isKeyboardTextInput(targetEl)) return;
+      if (lastPointerType === 'pen') {
+        getDesiredInputMode(targetEl);
+        targetEl.setAttribute('inputmode', 'none');
+        targetEl.inputMode = 'none';
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (lastPointerType !== 'touch') return;
+      const targetEl = e.target instanceof Element ? e.target : null;
+      const editable = targetEl?.closest('input, textarea') || null;
+      if (!isKeyboardTextInput(editable)) return;
+
+      const desired = getDesiredInputMode(editable);
+      if (document.activeElement === editable) {
+        editable.blur();
+      }
+      editable.setAttribute('inputmode', desired);
+      editable.inputMode = desired;
+      editable.focus();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      if (lastPointerType !== 'touch') return;
+      const targetEl = e.target instanceof Element ? e.target : null;
+      const editable = targetEl?.closest('input, textarea') || null;
+      if (!isKeyboardTextInput(editable)) return;
+
+      const desired = getDesiredInputMode(editable);
+      editable.setAttribute('inputmode', desired);
+      editable.inputMode = desired;
+      if (document.activeElement !== editable) {
+        editable.focus();
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      const targetEl = e.target instanceof Element ? e.target : null;
+      if (
+        lastPointerType === 'pen' ||
+        targetEl?.closest('canvas') ||
+        !targetEl?.closest('input, textarea')
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    const handleSelectStart = (e: Event) => {
+      const targetEl = e.target instanceof Element ? e.target : null;
+      if (!targetEl?.closest('input, textarea, [contenteditable="true"]')) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+    document.addEventListener('touchend', handleTouchEnd, false);
+    document.addEventListener('click', handleClick, false);
+    document.addEventListener('contextmenu', handleContextMenu, true);
+    document.addEventListener('selectstart', handleSelectStart, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+      document.removeEventListener('touchend', handleTouchEnd, false);
+      document.removeEventListener('click', handleClick, false);
+      document.removeEventListener('contextmenu', handleContextMenu, true);
+      document.removeEventListener('selectstart', handleSelectStart, true);
+    };
   }, []);
 
   // Track Auth state
@@ -536,12 +711,12 @@ export default function App() {
 
   const handleDeleteAgent = async (agentId: string) => {
     if (!user) return;
-    setIsSyncing(true);
-    try {
-      await deleteCloudCharacter(agentId);
-    } finally {
-      setIsSyncing(false);
-    }
+    const target = agents.find((a) => a.id === agentId);
+    setPendingDeleteConfirm({
+      type: 'character',
+      id: agentId,
+      title: target?.fullNameAndAlias?.trim() || 'UNNAMED AGENT',
+    });
   };
 
   // Game Master Session & Asset Handlers
@@ -626,16 +801,101 @@ export default function App() {
 
   const handleDeleteGmSession = async (sessionId: string) => {
     if (!user) return;
+    const target = hostedSessions.find((s) => s.id === sessionId);
+    setPendingDeleteConfirm({
+      type: 'session',
+      id: sessionId,
+      title: target?.title?.trim() || 'Game Master Session',
+    });
+  };
+
+  const handleConfirmPendingDelete = async () => {
+    if (!user || !pendingDeleteConfirm) return;
+    const item = pendingDeleteConfirm;
+    setPendingDeleteConfirm(null);
     setIsSyncing(true);
     try {
-      await deleteGameSession(sessionId);
-      if (activeSessionId === sessionId) {
-        setActiveSessionId('');
-        setViewMode('hub');
+      if (item.type === 'character') {
+        await deleteCloudCharacter(item.id);
+      } else {
+        await deleteGameSession(item.id);
+        if (activeSessionId === item.id) {
+          setActiveSessionId('');
+          setViewMode('hub');
+        }
       }
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const renderDeleteConfirmationModal = () => {
+    if (!pendingDeleteConfirm) return null;
+    const isChar = pendingDeleteConfirm.type === 'character';
+    return (
+      <div
+        className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={() => setPendingDeleteConfirm(null)}
+      >
+        <div
+          className="bg-[#121715] border-2 border-[#DC2626] rounded max-w-md w-full p-5 space-y-4 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-3 border-b border-[#232B28] pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded bg-[#DC2626]/20 border border-[#DC2626] text-[#F87171] shrink-0">
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <div className="font-mono-tabular text-[11px] text-[#F87171] uppercase font-bold">
+                  CONFIRM PERMANENT DELETION
+                </div>
+                <h3 className="font-display text-base font-bold text-[#E2E6E4]">
+                  {isChar ? 'Delete Character Dossier?' : 'Delete Game Master Session?'}
+                </h3>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingDeleteConfirm(null)}
+              className="p-1 rounded bg-[#0B0E0D] border border-[#232B28] text-[#A5B0AC] hover:text-[#E2E6E4] cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <p className="text-xs sm:text-sm text-[#A5B0AC] leading-relaxed">
+            Are you sure you want to permanently delete{' '}
+            <strong className="text-[#E2E6E4]">
+              &ldquo;{pendingDeleteConfirm.title}&rdquo;
+            </strong>
+            ?{' '}
+            {isChar
+              ? 'This character sheet and all of its stats, skills, and notes will be removed from the database.'
+              : 'This session, its timeline history, and all player invitations will be permanently removed.'}{' '}
+            This action cannot be undone.
+          </p>
+
+          <div className="pt-2 border-t border-[#232B28] flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => setPendingDeleteConfirm(null)}
+              className="px-4 py-2 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular font-semibold text-[#E2E6E4] cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmPendingDelete}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
+            >
+              <Trash2 size={13} />
+              <span>{isChar ? 'Yes, Delete Character' : 'Yes, Delete Session'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleJoinInvitedSession = async (
@@ -712,6 +972,7 @@ export default function App() {
   if (viewMode === 'gm-session' && user && activeGmSession) {
     return (
       <>
+        {renderDeleteConfirmationModal()}
         <GmSessionScreen
           user={user}
           visualTheme={visualTheme}
@@ -727,7 +988,6 @@ export default function App() {
           onBackToHub={() => setViewMode('hub')}
           isSyncing={isSyncing}
         />
-        <TouchVirtualKeyboard />
       </>
     );
   }
@@ -736,6 +996,7 @@ export default function App() {
   if (viewMode === 'hub' || !user || !activeAgent) {
     return (
       <>
+        {renderDeleteConfirmationModal()}
         <RpgHubScreen
           user={user}
           authLoading={authLoading}
@@ -770,7 +1031,6 @@ export default function App() {
           onRestoreStarterAssets={handleRestoreStarterAssets}
           isSyncing={isSyncing}
         />
-        <TouchVirtualKeyboard />
       </>
     );
   }
@@ -1189,7 +1449,7 @@ export default function App() {
           )}
         </div>
       </main>
-      <TouchVirtualKeyboard />
+      {renderDeleteConfirmationModal()}
     </div>
   );
 }

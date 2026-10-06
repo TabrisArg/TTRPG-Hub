@@ -26,6 +26,7 @@ import { StyledHandoutRenderer } from './StyledHandoutRenderer';
 import { ScribbleStudioModal } from './ScribbleStudioModal';
 import { ImageZoomModal } from './ImageZoomModal';
 import { AddToGmLibraryModal } from './AddToGmLibraryModal';
+import { CampaignDateTimePicker } from './CampaignDateTimePicker';
 
 interface SessionMessageBoardProps {
   session: GameSession;
@@ -317,8 +318,8 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Quick "Back in the Present" Button when GM is in a Flashback */}
-          {canUseGmControls && hasFlashbackSavedPresent && (
+          {/* Quick "Back in the Present" Button when GM is in a Flashback and Time Skip panel is closed */}
+          {canUseGmControls && hasFlashbackSavedPresent && !showTimeSkipPanel && (
             <button
               type="button"
               onClick={handleBackInThePresent}
@@ -345,7 +346,9 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
             <button
               type="button"
               onClick={() => {
-                setSpecificDateInput(session.sceneState?.dateTime || '');
+                setSpecificDateInput(
+                  session.sceneState?.dateTime || 'October 14, 1998 // 2200 HRS'
+                );
                 setShowTimeSkipPanel((v) => !v);
               }}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono-tabular font-semibold border transition-colors cursor-pointer ${
@@ -394,28 +397,10 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
                 GM TIME SKIP & CAMPAIGN TIME CONTROLLER
               </div>
               <p className="text-xs text-[#A5B0AC]">
-                Picking any time skip updates the current time of the campaign and inserts a time skip line in the timeline. Use &ldquo;Back in the Present&rdquo; after a flashback to return to present campaign time.
+                Picking any time skip updates the current time of the campaign and inserts a time skip line in the timeline. Use &ldquo;Back in the present&rdquo; after a flashback to return to present campaign time.
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleBackInThePresent}
-                title={
-                  hasFlashbackSavedPresent
-                    ? `Restore campaign time to ${session.sceneState.presentDateTime} and insert "Back in the present"`
-                    : 'Insert "Back in the present" separator and return to present time'
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
-              >
-                <RotateCcw size={13} />
-                <span>
-                  Back in the Present
-                  {hasFlashbackSavedPresent
-                    ? ` (${session.sceneState.presentDateTime})`
-                    : ''}
-                </span>
-              </button>
               <button
                 type="button"
                 onClick={() => setShowTimeSkipPanel(false)}
@@ -426,21 +411,23 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
             </div>
           </div>
 
-          {/* Specific Date Input */}
+          {/* Specific Date & Time Picker */}
           <form
             onSubmit={handleApplySpecificDate}
-            className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 bg-[#0B0E0D] border border-[#232B28] p-3 rounded"
+            className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 bg-[#0B0E0D] border border-[#232B28] p-3 rounded"
           >
-            <div className="flex-1">
-              <label className="block font-mono-tabular text-[11px] text-[#FBBF24] mb-1">
-                SET CAMPAIGN DATE & TIME / INSERT SPECIFIC DATE SEPARATOR
-              </label>
-              <input
-                type="text"
+            <div className="flex-1 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="block font-mono-tabular text-[11px] text-[#FBBF24]">
+                  SET CAMPAIGN DATE & TIME / INSERT SPECIFIC DATE SEPARATOR
+                </label>
+                <span className="font-mono-tabular text-[11px] text-[#4ADE80]">
+                  Selected: {specificDateInput || 'October 14, 1998 // 2200 HRS'}
+                </span>
+              </div>
+              <CampaignDateTimePicker
                 value={specificDateInput}
-                onChange={(e) => setSpecificDateInput(e.target.value)}
-                placeholder="e.g., October 14, 1998 // 2200 HRS"
-                className="w-full bg-[#121715] border border-[#232B28] focus:border-[#FBBF24] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                onChange={(formatted) => setSpecificDateInput(formatted)}
               />
             </div>
             <button

@@ -156,6 +156,14 @@
     --c-scrollbar-thumb: #463724;
   }
 
+  html,
+  body,
+  #root {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   body {
     font-family: var(--font-sans);
     background-color: var(--c-canvas);
@@ -164,23 +172,35 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* Ensure iPadOS / iOS virtual keyboard works with both finger touch and Apple Pencil */
+  canvas,
+  label,
+  button,
+  img,
+  svg {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+
+  /* Ensure iPadOS / iOS native virtual keyboard & Apple Pencil Scribble work without callout popups */
   input,
   textarea,
   select,
   [contenteditable="true"] {
-    -webkit-user-select: text !important;
-    user-select: text !important;
-    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: none !important;
     touch-action: manipulation;
   }
 
-  input[type="date"]::-webkit-calendar-picker-indicator {
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
     filter: invert(0.8);
   }
 
-  [data-theme="default-light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  [data-theme="default-light"] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme="default-light"] input[type="time"]::-webkit-calendar-picker-indicator {
     filter: invert(0.2);
   }
 

@@ -1078,46 +1078,19 @@ export const ScribbleStudioModal: React.FC<ScribbleStudioModalProps> = ({
         )}
       </div>
 
-      {/* Quick Background Chips Bar for Blank Document Mode */}
-      {isBlankDocMode && (
-        <div
-          className="bg-[#0E1311] border-b border-[#232B28] px-4 sm:px-6 py-2 flex items-center gap-1.5 overflow-x-auto shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span className="font-mono-tabular text-[10px] text-[#8C9692] mr-1 shrink-0">
-            SURFACE TEXTURES:
-          </span>
-          {BLANK_BACKGROUND_OPTIONS.map((bg) => {
-            const active = backgroundType === bg.id;
-            return (
-              <button
-                key={bg.id}
-                type="button"
-                onClick={() => handleSelectBackground(bg.id)}
-                className={`px-2.5 py-1 rounded text-[11px] font-mono-tabular whitespace-nowrap border transition-colors cursor-pointer ${
-                  active
-                    ? 'bg-[#16A34A] border-[#16A34A] text-white font-semibold'
-                    : 'bg-[#0B0E0D] border-[#232B28] text-[#A5B0AC] hover:text-[#E2E6E4]'
-                }`}
-              >
-                {bg.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Interactive Dual-Layer Canvas Viewport */}
       <div
         className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center select-none"
         onClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <div
           style={{
             width: canvasSize.width,
             height: canvasSize.height,
           }}
-          className="relative max-w-full border-2 border-[#232B28] shadow-2xl rounded overflow-hidden bg-[#0B0E0D]"
+          className="relative max-w-full border-2 border-[#232B28] shadow-2xl rounded overflow-hidden bg-[#0B0E0D] select-none"
+          onContextMenu={(e) => e.preventDefault()}
         >
           {/* Base Image Visual Backing when annotating an existing image */}
           {!isBlankDocMode && baseImageUrl && (
@@ -1134,7 +1107,7 @@ export const ScribbleStudioModal: React.FC<ScribbleStudioModalProps> = ({
             ref={bgCanvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            className="absolute inset-0 w-full h-full pointer-events-none"
+            className="absolute inset-0 w-full h-full pointer-events-none select-none"
           />
 
           {/* Layer 2: User Ink & Eraser Layer */}
@@ -1142,13 +1115,19 @@ export const ScribbleStudioModal: React.FC<ScribbleStudioModalProps> = ({
             ref={inkCanvasRef}
             width={canvasSize.width}
             height={canvasSize.height}
-            style={{ touchAction: 'none' }}
+            style={{
+              touchAction: 'none',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+            }}
+            onContextMenu={(e) => e.preventDefault()}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             onPointerLeave={handlePointerUp}
-            className="absolute inset-0 w-full h-full cursor-crosshair"
+            className="absolute inset-0 w-full h-full cursor-crosshair select-none"
           />
         </div>
       </div>

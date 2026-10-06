@@ -30,6 +30,7 @@ import { getThemeMeta } from '../utils/themes';
 import { GmAssetManager } from './GmAssetManager';
 import { ImageZoomModal } from './ImageZoomModal';
 import { D20Icon } from './D20Icon';
+import { CampaignDateTimePicker } from './CampaignDateTimePicker';
 
 export type SelectedGameTab = 'characters' | 'sessions' | 'gm-section';
 
@@ -891,15 +892,17 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
                         </div>
 
                         <div>
-                          <label className="block font-mono-tabular text-[11px] text-[#FBBF24] mb-1">
-                            SESSION DATE / STARTING TIMELINE DATE (OPTIONAL)
-                          </label>
-                          <input
-                            type="text"
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <label className="block font-mono-tabular text-[11px] text-[#FBBF24]">
+                              SESSION DATE / STARTING TIMELINE DATE & TIME
+                            </label>
+                            <span className="font-mono-tabular text-[10px] text-[#4ADE80]">
+                              {sessionDate}
+                            </span>
+                          </div>
+                          <CampaignDateTimePicker
                             value={sessionDate}
-                            onChange={(e) => setSessionDate(e.target.value)}
-                            placeholder="e.g., October 14, 1998 // 22:00 HRS"
-                            className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#FBBF24] rounded px-3 py-2 text-xs text-[#E2E6E4] focus:outline-none"
+                            onChange={(formatted) => setSessionDate(formatted)}
                           />
                         </div>
 
@@ -930,7 +933,7 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
                             className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-xs font-mono-tabular text-[#E2E6E4] focus:outline-none"
                           />
                           <p className="text-[11px] text-[#68736E] mt-1">
-                            Invited players will automatically see this session under Sessions & Invites and can join with their character sheet. Starter example handouts are included automatically.
+                            Invited players will automatically see this session under Sessions & Invites and can join with their character sheet.
                           </p>
                         </div>
 
@@ -1148,23 +1151,7 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
                     onCreateAsset={onCreateGmAsset}
                     onUpdateAsset={onUpdateGmAsset}
                     onDeleteAsset={onDeleteGmAsset}
-                    hasActiveSession={Boolean(activeGmSession || hostedSessions[0])}
-                    onShareAssetToSession={onShareAssetToActiveSession}
-                    onReturnToSession={
-                      activeGmSession || hostedSessions[0]
-                        ? () =>
-                            onOpenGmSession(
-                              (activeGmSession || hostedSessions[0]).id
-                            )
-                        : undefined
-                    }
-                    returnToSessionLabel={
-                      activeGmSession || hostedSessions[0]
-                        ? `Return to GM Session (${
-                            (activeGmSession || hostedSessions[0]).title
-                          })`
-                        : undefined
-                    }
+                    hasActiveSession={false}
                     onRestoreStarterAssets={onRestoreStarterAssets}
                     isSyncing={isSyncing}
                   />

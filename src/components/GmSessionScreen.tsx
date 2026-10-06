@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   FolderOpen,
   X,
+  Check,
   CheckCircle2,
   AlertTriangle,
   Radio,
@@ -52,6 +53,7 @@ import { StatisticalAndPsychSection } from './StatisticalAndPsychSection';
 import { ApplicableSkillSetsSection } from './ApplicableSkillSetsSection';
 import { InjuriesAndEquipmentSection } from './InjuriesAndEquipmentSection';
 import { RemarksSection } from './RemarksSection';
+import { CampaignDateTimePicker } from './CampaignDateTimePicker';
 
 interface GmSessionScreenProps {
   user: User;
@@ -118,7 +120,7 @@ function applyTimeSkipToCampaignDate(
 
   // Try matching "Month DD, YYYY // HHMM HRS" or "Month DD, YYYY"
   const milMatch = raw.match(
-    /^([A-Za-z]+\s+\d{1,2},?\s+\d{4})(?:\s*\/\/\s*(\d{2})(\d{2})\s*HRS)?/i
+    /^([A-Za-z]+\s+\d{1,2},?\s+\d{4})(?:\s*\/\/\s*(\d{1,2}):?(\d{2})\s*HRS)?/i
   );
 
   let parsedDate: Date | null = null;
@@ -1019,24 +1021,22 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-mono-tabular text-[10px] text-[#FBBF24] mb-1">
-                  SESSION DATE / TIME
+              <div className="sm:col-span-2 lg:col-span-1">
+                <label className="block font-mono-tabular text-[10px] text-[#FBBF24] mb-1 truncate">
+                  SESSION DATE / TIME ({session.sceneState.dateTime || 'Not set'})
                 </label>
-                <input
-                  type="text"
+                <CampaignDateTimePicker
+                  compact={true}
                   value={session.sceneState.dateTime || ''}
-                  onChange={(e) =>
+                  onChange={(formatted) =>
                     onUpdateSession({
                       ...session,
                       sceneState: {
                         ...session.sceneState,
-                        dateTime: e.target.value,
+                        dateTime: formatted,
                       },
                     })
                   }
-                  placeholder="e.g., October 14, 1998"
-                  className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#FBBF24] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
                 />
               </div>
 
