@@ -271,6 +271,7 @@ service cloud.firestore {
     function isSessionMember(sessionData) {
       return isSignedIn() && (
         sessionData.gmId == request.auth.uid ||
+        (request.auth.token.email != null && request.auth.token.email in sessionData.invitedEmails) ||
         (isVerifiedUser() && request.auth.token.email != null && request.auth.token.email.lower() in sessionData.invitedEmails)
       );
     }
@@ -407,7 +408,7 @@ service cloud.firestore {
           ])) ||
           // Tier 2: Verified Invited Player can join/link their character, post a public roll, or post messages/scribbles to sharedItems
           (request.auth.token.email != null
-            && request.auth.token.email.lower() in existing().invitedEmails
+            && (request.auth.token.email in existing().invitedEmails || request.auth.token.email.lower() in existing().invitedEmails)
             && incoming().diff(existing()).affectedKeys().hasOnly([
               'joinedPlayers',
               'publicRolls',

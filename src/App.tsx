@@ -287,10 +287,9 @@ export default function App() {
   useEffect(() => {
     if (authLoading || !user || !user.email) return;
 
-    const lowerEmail = user.email.toLowerCase();
     const q = query(
       collection(db, 'sessions'),
-      where('invitedEmails', 'array-contains', lowerEmail)
+      where('invitedEmails', 'array-contains', user.email)
     );
 
     const unsubscribe = onSnapshot(

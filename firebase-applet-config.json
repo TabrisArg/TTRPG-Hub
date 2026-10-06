@@ -1,12 +1,12 @@
 {
-  "projectId": "gen-lang-client-0096063843",
-  "appId": "1:71288955750:web:b12a449e4f877fe0839ea7",
-  "apiKey": "AIzaSyC3d0VVqekNy80uvViRaoOOC2ARiEo-6pc",
-  "authDomain": "gen-lang-client-0096063843.firebaseapp.com",
+  "projectId": "ttrpghub",
+  "appId": "1:1019521476238:web:61b8bc7ce4314baca30bdf",
+  "apiKey": "AIzaSyBWJrXNQhoJvhCq45ZY1mcy1G18LZFRfIk",
+  "authDomain": "ttrpghub.firebaseapp.com",
   "firestoreDatabaseId": "ttrpg-hub",
-  "storageBucket": "gen-lang-client-0096063843.firebasestorage.app",
-  "messagingSenderId": "71288955750",
+  "storageBucket": "ttrpghub.firebasestorage.app",
+  "messagingSenderId": "1019521476238",
   "measurementId": "",
-  "oAuthClientId": "71288955750-7vngi2ilgradpj9f8uv20lltpslngvud.apps.googleusercontent.com",
+  "oAuthClientId": "1019521476238-ps70d0qjs7a08mtob30l3m3o08lafder.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
