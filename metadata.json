@@ -1,0 +1,6 @@
+{
+  "name": "TTRPG Hub",
+  "description": "Cloud-synced tabletop RPG character sheet hub for storing, tracking, and managing your character dossiers across tabletop systems.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,424 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidSheetData(sd) {
+      return sd is map
+        && sd.keys().hasAll([
+          'statistics',
+          'derived',
+          'adaptation',
+          'bonds',
+          'skills',
+          'foreignLanguagesAndOther',
+          'weapons',
+          'specialTraining'
+        ])
+        && sd.keys().hasOnly([
+          'statistics',
+          'derived',
+          'adaptation',
+          'bonds',
+          'skills',
+          'foreignLanguagesAndOther',
+          'weapons',
+          'specialTraining'
+        ])
+        && sd.statistics is map
+        && sd.derived is map
+        && sd.adaptation is map
+        && sd.bonds is list && sd.bonds.size() <= 20
+        && (sd.bonds.size() == 0 || sd.bonds[0] is map)
+        && sd.skills is list && sd.skills.size() <= 60
+        && (sd.skills.size() == 0 || sd.skills[0] is map)
+        && sd.foreignLanguagesAndOther is list && sd.foreignLanguagesAndOther.size() <= 25
+        && (sd.foreignLanguagesAndOther.size() == 0 || sd.foreignLanguagesAndOther[0] is map)
+        && sd.weapons is list && sd.weapons.size() <= 15
+        && (sd.weapons.size() == 0 || sd.weapons[0] is map)
+        && sd.specialTraining is list && sd.specialTraining.size() <= 20
+        && (sd.specialTraining.size() == 0 || sd.specialTraining[0] is map);
+    }
+
+    function isValidCharacterDossier(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'ownerName',
+          'gameSystem',
+          'fullNameAndAlias',
+          'professionAndRank',
+          'employer',
+          'nationality',
+          'sex',
+          'sexOtherText',
+          'ageAndDob',
+          'educationAndOccupation',
+          'portraitUrl',
+          'physicalDescription',
+          'motivationsAndDisorders',
+          'woundsAndAilments',
+          'firstAidAttempted',
+          'armorAndGear',
+          'armorRating',
+          'personalDetailsAndNotes',
+          'developmentsHomeAndFamily',
+          'recruitmentNote',
+          'authorizingOfficer',
+          'agentSignature',
+          'sheetData',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'ownerName',
+          'gameSystem',
+          'sessionId',
+          'sessionGmId',
+          'fullNameAndAlias',
+          'professionAndRank',
+          'employer',
+          'nationality',
+          'sex',
+          'sexOtherText',
+          'ageAndDob',
+          'educationAndOccupation',
+          'portraitUrl',
+          'physicalDescription',
+          'motivationsAndDisorders',
+          'woundsAndAilments',
+          'firstAidAttempted',
+          'armorAndGear',
+          'armorRating',
+          'personalDetailsAndNotes',
+          'developmentsHomeAndFamily',
+          'recruitmentNote',
+          'authorizingOfficer',
+          'agentSignature',
+          'sheetData',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.ownerName is string && data.ownerName.size() <= 120
+        && data.gameSystem is string && data.gameSystem.size() <= 40 && data.gameSystem in ['delta-green']
+        && (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 128))
+        && (!('sessionGmId' in data) || (data.sessionGmId is string && data.sessionGmId.size() <= 128))
+        && data.fullNameAndAlias is string && data.fullNameAndAlias.size() <= 200
+        && data.professionAndRank is string && data.professionAndRank.size() <= 200
+        && data.employer is string && data.employer.size() <= 200
+        && data.nationality is string && data.nationality.size() <= 120
+        && data.sex is string && data.sex.size() <= 20
+        && data.sexOtherText is string && data.sexOtherText.size() <= 100
+        && data.ageAndDob is string && data.ageAndDob.size() <= 100
+        && data.educationAndOccupation is string && data.educationAndOccupation.size() <= 2000
+        && data.portraitUrl is string && data.portraitUrl.size() <= 700000
+        && data.physicalDescription is string && data.physicalDescription.size() <= 2000
+        && data.motivationsAndDisorders is string && data.motivationsAndDisorders.size() <= 3000
+        && data.woundsAndAilments is string && data.woundsAndAilments.size() <= 3000
+        && data.firstAidAttempted is bool
+        && data.armorAndGear is string && data.armorAndGear.size() <= 3000
+        && data.armorRating is int && data.armorRating >= 0 && data.armorRating <= 100
+        && data.personalDetailsAndNotes is string && data.personalDetailsAndNotes.size() <= 5000
+        && data.developmentsHomeAndFamily is string && data.developmentsHomeAndFamily.size() <= 3000
+        && data.recruitmentNote is string && data.recruitmentNote.size() <= 1000
+        && data.authorizingOfficer is string && data.authorizingOfficer.size() <= 200
+        && data.agentSignature is string && data.agentSignature.size() <= 200
+        && isValidSheetData(data.sheetData)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGmAsset(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'gameSystem',
+          'category',
+          'title',
+          'subtitle',
+          'imageUrl',
+          'publicContent',
+          'gmSecretNotes',
+          'docStyle',
+          'docFont',
+          'docSignature',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'gameSystem',
+          'category',
+          'title',
+          'subtitle',
+          'imageUrl',
+          'publicContent',
+          'gmSecretNotes',
+          'docStyle',
+          'docFont',
+          'docSignature',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.gameSystem is string && data.gameSystem.size() <= 40 && data.gameSystem in ['delta-green']
+        && data.category is string && data.category.size() <= 30 && data.category in ['npc', 'location', 'image', 'document']
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.subtitle is string && data.subtitle.size() <= 200
+        && data.imageUrl is string && data.imageUrl.size() <= 700000
+        && data.publicContent is string && data.publicContent.size() <= 10000
+        && data.gmSecretNotes is string && data.gmSecretNotes.size() <= 5000
+        && data.docStyle is string && data.docStyle.size() <= 40 && data.docStyle in ['official-document', 'bloody-letter', 'napkin-note', 'old-computer', 'small-sign', 'large-sign', 'fantasy-scroll', 'night-sky', 'pond-water', 'clouds-sky', '']
+        && data.docFont is string && data.docFont.size() <= 40 && data.docFont in ['mono', 'typewriter', 'handwritten', 'terminal', 'serif', 'display', 'cloud', 'fantasy', '']
+        && data.docSignature is string && data.docSignature.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGameSession(data) {
+      return data.keys().hasAll([
+          'gmId',
+          'gmName',
+          'gmEmail',
+          'gameSystem',
+          'title',
+          'description',
+          'status',
+          'invitedEmails',
+          'joinedPlayers',
+          'sceneState',
+          'spotlightItem',
+          'sharedItems',
+          'publicRolls',
+          'privateRolls',
+          'combatTracker',
+          'clocks',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'gmId',
+          'gmName',
+          'gmEmail',
+          'gameSystem',
+          'title',
+          'description',
+          'status',
+          'invitedEmails',
+          'joinedPlayers',
+          'sceneState',
+          'spotlightItem',
+          'sharedItems',
+          'publicRolls',
+          'privateRolls',
+          'combatTracker',
+          'clocks',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.gmId is string && data.gmId.size() >= 1 && data.gmId.size() <= 128 && data.gmId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.gmName is string && data.gmName.size() <= 120
+        && data.gmEmail is string && data.gmEmail.size() <= 200
+        && data.gameSystem is string && data.gameSystem.size() <= 40 && data.gameSystem in ['delta-green']
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.status is string && data.status.size() <= 30 && data.status in ['active', 'paused', 'archived']
+        && data.invitedEmails is list && data.invitedEmails.size() <= 20
+        && (data.invitedEmails.size() == 0 || (data.invitedEmails[0] is string && data.invitedEmails[0].size() <= 200))
+        && data.joinedPlayers is list && data.joinedPlayers.size() <= 20
+        && (data.joinedPlayers.size() == 0 || data.joinedPlayers[0] is map)
+        && data.sceneState is map
+        && data.spotlightItem is map
+        && data.sharedItems is list && data.sharedItems.size() <= 100
+        && (data.sharedItems.size() == 0 || data.sharedItems[0] is map)
+        && data.publicRolls is list && data.publicRolls.size() <= 50
+        && (data.publicRolls.size() == 0 || data.publicRolls[0] is map)
+        && data.privateRolls is list && data.privateRolls.size() <= 50
+        && (data.privateRolls.size() == 0 || data.privateRolls[0] is map)
+        && data.combatTracker is list && data.combatTracker.size() <= 30
+        && (data.combatTracker.size() == 0 || data.combatTracker[0] is map)
+        && data.clocks is list && data.clocks.size() <= 15
+        && (data.clocks.size() == 0 || data.clocks[0] is map)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isSessionMember(sessionData) {
+      return isSignedIn() && (
+        sessionData.gmId == request.auth.uid ||
+        (isVerifiedUser() && request.auth.token.email != null && request.auth.token.email.lower() in sessionData.invitedEmails)
+      );
+    }
+
+    match /characters/{characterId} {
+      allow get: if isSignedIn() && isValidId(characterId) && (
+        existing().ownerId == request.auth.uid ||
+        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid)
+      );
+      allow list: if isSignedIn() && (
+        existing().ownerId == request.auth.uid ||
+        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid)
+      );
+
+      allow create: if isVerifiedUser()
+        && isValidId(characterId)
+        && isValidCharacterDossier(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(characterId)
+        && isValidCharacterDossier(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().gameSystem == existing().gameSystem
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'ownerName',
+          'sessionId',
+          'sessionGmId',
+          'fullNameAndAlias',
+          'professionAndRank',
+          'employer',
+          'nationality',
+          'sex',
+          'sexOtherText',
+          'ageAndDob',
+          'educationAndOccupation',
+          'portraitUrl',
+          'physicalDescription',
+          'motivationsAndDisorders',
+          'woundsAndAilments',
+          'firstAidAttempted',
+          'armorAndGear',
+          'armorRating',
+          'personalDetailsAndNotes',
+          'developmentsHomeAndFamily',
+          'recruitmentNote',
+          'authorizingOfficer',
+          'agentSignature',
+          'sheetData',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(characterId)
+        && existing().ownerId == request.auth.uid;
+    }
+
+    match /gmAssets/{assetId} {
+      allow get: if isSignedIn() && isValidId(assetId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(assetId)
+        && isValidGmAsset(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(assetId)
+        && isValidGmAsset(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().gameSystem == existing().gameSystem
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'category',
+          'title',
+          'subtitle',
+          'imageUrl',
+          'publicContent',
+          'gmSecretNotes',
+          'docStyle',
+          'docFont',
+          'docSignature',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser()
+        && isValidId(assetId)
+        && existing().ownerId == request.auth.uid;
+    }
+
+    match /sessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isSessionMember(existing());
+      allow list: if isSessionMember(existing());
+
+      allow create: if isVerifiedUser()
+        && isValidId(sessionId)
+        && isValidGameSession(incoming())
+        && incoming().gmId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(sessionId)
+        && isValidGameSession(incoming())
+        && incoming().gmId == existing().gmId
+        && incoming().gameSystem == existing().gameSystem
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Tier 1: Game Master can update session state, handouts, rolls, clocks, and invitations
+          (existing().gmId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'gmName',
+            'gmEmail',
+            'title',
+            'description',
+            'status',
+            'invitedEmails',
+            'joinedPlayers',
+            'sceneState',
+            'spotlightItem',
+            'sharedItems',
+            'publicRolls',
+            'privateRolls',
+            'combatTracker',
+            'clocks',
+            'updatedAt'
+          ])) ||
+          // Tier 2: Verified Invited Player can join/link their character, post a public roll, or post messages/scribbles to sharedItems
+          (request.auth.token.email != null
+            && request.auth.token.email.lower() in existing().invitedEmails
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'joinedPlayers',
+              'publicRolls',
+              'sharedItems',
+              'updatedAt'
+            ]))
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(sessionId)
+        && existing().gmId == request.auth.uid;
+    }
+  }
+}

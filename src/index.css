@@ -1,0 +1,412 @@
+@import "tailwindcss";
+
+@layer base {
+  :root,
+  [data-theme="delta-green"] {
+    --font-display: 'Syne', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --c-canvas: #0B0E0D;
+    --c-surface: #121715;
+    --c-surface-alt: #0E1311;
+    --c-sidebar: #070908;
+    --c-hover: #161C1A;
+    --c-trained: #131A17;
+    --c-border: #232B28;
+    --c-text-primary: #E2E6E4;
+    --c-text-secondary: #A5B0AC;
+    --c-text-label: #8C9692;
+    --c-text-muted: #68736E;
+    --c-accent-btn: #16A34A;
+    --c-accent-btn-hover: #15803D;
+    --c-accent-text: #4ADE80;
+    --c-scrollbar-thumb: #232B28;
+  }
+
+  [data-theme="default-light"] {
+    --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --c-canvas: #F2F3F7;
+    --c-surface: #FFFFFF;
+    --c-surface-alt: #EAECEF;
+    --c-sidebar: #E2E4EA;
+    --c-hover: #E6E9F0;
+    --c-trained: #E0F0FF;
+    --c-border: #C4C7D0;
+    --c-text-primary: #111827;
+    --c-text-secondary: #374151;
+    --c-text-label: #4B5563;
+    --c-text-muted: #525B65;
+    --c-accent-btn: #0066CC;
+    --c-accent-btn-hover: #0052A3;
+    --c-accent-text: #0055B3;
+    --c-scrollbar-thumb: #B0B5C0;
+  }
+
+  [data-theme="default-dark"] {
+    --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+    --c-canvas: #0D0D0F;
+    --c-surface: #1C1C1E;
+    --c-surface-alt: #151517;
+    --c-sidebar: #121214;
+    --c-hover: #2C2C2E;
+    --c-trained: #142234;
+    --c-border: #38383A;
+    --c-text-primary: #F5F5F7;
+    --c-text-secondary: #AEAEB2;
+    --c-text-label: #8E8E93;
+    --c-text-muted: #636366;
+    --c-accent-btn: #0A84FF;
+    --c-accent-btn-hover: #0070E0;
+    --c-accent-text: #409CFF;
+    --c-scrollbar-thumb: #3A3A3C;
+  }
+
+  [data-theme="dnd"] {
+    --font-display: 'Cinzel', Georgia, serif;
+    --font-sans: 'Lora', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --c-canvas: #16100C;
+    --c-surface: #221813;
+    --c-surface-alt: #1B130F;
+    --c-sidebar: #100B08;
+    --c-hover: #2C1F18;
+    --c-trained: #2B1A14;
+    --c-border: #4A3325;
+    --c-text-primary: #F5E6D3;
+    --c-text-secondary: #D4BE9E;
+    --c-text-label: #B59B7B;
+    --c-text-muted: #876E52;
+    --c-accent-btn: #B91C1C;
+    --c-accent-btn-hover: #991B1B;
+    --c-accent-text: #F59E0B;
+    --c-scrollbar-thumb: #4A3325;
+  }
+
+  [data-theme="call-of-cthulhu"] {
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Lora', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', Courier, monospace;
+
+    --c-canvas: #0B1113;
+    --c-surface: #131C1F;
+    --c-surface-alt: #0E1618;
+    --c-sidebar: #070B0D;
+    --c-hover: #1B272B;
+    --c-trained: #162526;
+    --c-border: #2B3D41;
+    --c-text-primary: #EAE2D3;
+    --c-text-secondary: #C2B7A3;
+    --c-text-label: #9C917E;
+    --c-text-muted: #6E6759;
+    --c-accent-btn: #0F766E;
+    --c-accent-btn-hover: #115E59;
+    --c-accent-text: #D9A05B;
+    --c-scrollbar-thumb: #2B3D41;
+  }
+
+  [data-theme="paranoia"] {
+    --font-display: 'Orbitron', sans-serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --c-canvas: #110708;
+    --c-surface: #1C0D0F;
+    --c-surface-alt: #16090B;
+    --c-sidebar: #0A0304;
+    --c-hover: #281215;
+    --c-trained: #2A1014;
+    --c-border: #4C1D24;
+    --c-text-primary: #FFF1F2;
+    --c-text-secondary: #FDA4AF;
+    --c-text-label: #FB7185;
+    --c-text-muted: #9F1239;
+    --c-accent-btn: #E11D48;
+    --c-accent-btn-hover: #BE123C;
+    --c-accent-text: #FACC15;
+    --c-scrollbar-thumb: #4C1D24;
+  }
+
+  [data-theme="warhammer-40k"] {
+    --font-display: 'Cinzel', Georgia, serif;
+    --font-sans: 'Chakra Petch', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --c-canvas: #0C0A08;
+    --c-surface: #16130F;
+    --c-surface-alt: #110E0B;
+    --c-sidebar: #070604;
+    --c-hover: #211C16;
+    --c-trained: #241A10;
+    --c-border: #463724;
+    --c-text-primary: #F3E8D2;
+    --c-text-secondary: #C8B594;
+    --c-text-label: #A38D68;
+    --c-text-muted: #736144;
+    --c-accent-btn: #991B1B;
+    --c-accent-btn-hover: #7F1D1D;
+    --c-accent-text: #FBBF24;
+    --c-scrollbar-thumb: #463724;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--c-canvas);
+    color: var(--c-text-primary);
+    overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Theme-Aware Overrides for Surface, Text, Border, and Accent Classes */
+[data-theme] .bg-\[\#0B0E0D\],
+[data-theme] .bg-\[\#0B0E0D\]\/60,
+[data-theme] .bg-\[\#0B0E0D\]\/80,
+[data-theme] .bg-\[\#0B0E0D\]\/90 {
+  background-color: var(--c-canvas) !important;
+}
+
+[data-theme] .bg-\[\#121715\],
+[data-theme] .bg-\[\#121715\]\/80,
+[data-theme] .bg-\[\#121715\]\/90 {
+  background-color: var(--c-surface) !important;
+}
+
+[data-theme] .bg-\[\#0E1311\],
+[data-theme] .bg-\[\#0E1210\],
+[data-theme] .bg-\[\#0E1311\]\/90 {
+  background-color: var(--c-surface-alt) !important;
+}
+
+[data-theme] .bg-\[\#070908\],
+[data-theme] .bg-\[\#070908\]\/95 {
+  background-color: var(--c-sidebar) !important;
+}
+
+[data-theme] .bg-\[\#131A17\],
+[data-theme] .bg-\[\#121916\],
+[data-theme] .bg-\[\#131C18\],
+[data-theme] .bg-\[\#1E2723\],
+[data-theme] .bg-\[\#19201E\],
+[data-theme] .bg-\[\#19221E\] {
+  background-color: var(--c-trained) !important;
+}
+
+[data-theme="default-light"] .bg-\[\#191510\],
+[data-theme="default-light"] .bg-\[\#17130E\],
+[data-theme="default-light"] .bg-\[\#19140E\],
+[data-theme="default-light"] .bg-\[\#19151D\],
+[data-theme="default-light"] .bg-\[\#19151D\]\/50 {
+  background-color: #FEF3C7 !important;
+}
+
+[data-theme="default-light"] .hover\:bg-\[\#1E1824\]:hover {
+  background-color: #FDE68A !important;
+}
+
+[data-theme="default-light"] .bg-\[\#D97706\]\/10,
+[data-theme="default-light"] .bg-\[\#D97706\]\/15,
+[data-theme="default-light"] .bg-\[\#D97706\]\/20 {
+  background-color: #FEF3C7 !important;
+}
+
+[data-theme="default-light"] .bg-\[\#DC2626\]\/10,
+[data-theme="default-light"] .bg-\[\#DC2626\]\/20 {
+  background-color: #FEE2E2 !important;
+}
+
+[data-theme="default-light"] .bg-\[\#16A34A\]\/10,
+[data-theme="default-light"] .bg-\[\#16A34A\]\/15,
+[data-theme="default-light"] .bg-\[\#16A34A\]\/20 {
+  background-color: rgba(0, 102, 204, 0.12) !important;
+}
+
+[data-theme="default-light"] .text-\[\#FBBF24\],
+[data-theme="default-light"] .text-\[\#F59E0B\],
+[data-theme="default-light"] .text-\[\#FDE68A\] {
+  color: #92400E !important;
+}
+
+[data-theme="default-light"] .text-\[\#F87171\],
+[data-theme="default-light"] .hover\:text-\[\#F87171\]:hover {
+  color: #B91C1C !important;
+}
+
+[data-theme="default-light"] .text-\[\#86EFAC\],
+[data-theme="default-light"] .hover\:text-\[\#86EFAC\]:hover {
+  color: var(--c-accent-btn-hover) !important;
+}
+
+[data-theme="default-light"] .text-\[\#33403B\] {
+  color: #6B7280 !important;
+}
+
+[data-theme="default-light"] input::placeholder,
+[data-theme="default-light"] textarea::placeholder {
+  color: #6B7280 !important;
+  opacity: 1;
+}
+
+[data-theme] .hover\:bg-\[\#161C1A\]:hover,
+[data-theme] .hover\:bg-\[\#19201E\]:hover,
+[data-theme] .hover\:bg-\[\#19221E\]:hover,
+[data-theme] .hover\:bg-\[\#171E1B\]:hover,
+[data-theme] .hover\:bg-\[\#18221E\]:hover {
+  background-color: var(--c-hover) !important;
+}
+
+[data-theme] .border-\[\#232B28\] {
+  border-color: var(--c-border) !important;
+}
+
+[data-theme] .divide-\[\#232B28\] > :not(:last-child) {
+  border-color: var(--c-border) !important;
+}
+
+[data-theme] .text-\[\#E2E6E4\] {
+  color: var(--c-text-primary) !important;
+}
+
+[data-theme] .text-\[\#A5B0AC\] {
+  color: var(--c-text-secondary) !important;
+}
+
+[data-theme] .text-\[\#8C9692\] {
+  color: var(--c-text-label) !important;
+}
+
+[data-theme] .text-\[\#68736E\],
+[data-theme] .text-\[\#525C58\] {
+  color: var(--c-text-muted) !important;
+}
+
+[data-theme] .bg-\[\#16A34A\] {
+  background-color: var(--c-accent-btn) !important;
+}
+
+[data-theme] .hover\:bg-\[\#15803D\]:hover {
+  background-color: var(--c-accent-btn-hover) !important;
+}
+
+[data-theme] .border-\[\#16A34A\],
+[data-theme] .border-\[\#16A34A\]\/50,
+[data-theme] .border-\[\#16A34A\]\/60,
+[data-theme] .border-\[\#4ADE80\],
+[data-theme] .focus\:border-\[\#16A34A\]:focus,
+[data-theme] .focus-within\:border-\[\#16A34A\]:focus-within,
+[data-theme] .hover\:border-\[\#16A34A\]:hover,
+[data-theme] .hover\:border-\[\#4ADE80\]:hover {
+  border-color: var(--c-accent-btn) !important;
+}
+
+[data-theme] .text-\[\#4ADE80\],
+[data-theme] .hover\:text-\[\#4ADE80\]:hover {
+  color: var(--c-accent-text) !important;
+}
+
+[data-theme] .accent-\[\#16A34A\] {
+  accent-color: var(--c-accent-btn) !important;
+}
+
+/* Apple Light & Dark HIG Visual Refinements */
+[data-theme="default-light"] section,
+[data-theme="default-dark"] section {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+[data-theme="default-light"] header {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px);
+}
+
+[data-theme="default-dark"] header {
+  background-color: rgba(24, 24, 26, 0.85) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* D&D High Fantasy Grimoire Ornamental Styling */
+[data-theme="dnd"] section {
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.14), 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dnd"] h1,
+[data-theme="dnd"] h2,
+[data-theme="dnd"] h3 {
+  letter-spacing: 0.03em;
+}
+
+/* Call of Cthulhu 1920s Arkham Investigation Styling */
+[data-theme="call-of-cthulhu"] section {
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="call-of-cthulhu"] h1,
+[data-theme="call-of-cthulhu"] h2,
+[data-theme="call-of-cthulhu"] h3 {
+  letter-spacing: 0.02em;
+}
+
+/* Paranoia Alpha Complex Friend Computer Terminal Styling */
+[data-theme="paranoia"] section {
+  box-shadow: 0 0 0 1px rgba(225, 29, 72, 0.25), inset 0 0 18px rgba(225, 29, 72, 0.08);
+}
+
+[data-theme="paranoia"] h1,
+[data-theme="paranoia"] h2,
+[data-theme="paranoia"] h3 {
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Warhammer 40k Imperial Cogitator & Gothic Brass Styling */
+[data-theme="warhammer-40k"] section {
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.16), 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="warhammer-40k"] h1,
+[data-theme="warhammer-40k"] h2,
+[data-theme="warhammer-40k"] h3 {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--c-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-scrollbar-thumb);
+  border-radius: 3px;
+}

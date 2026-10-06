@@ -1,0 +1,428 @@
+{
+  "entities": {
+    "CharacterDossier": {
+      "title": "CharacterDossier",
+      "description": "A tabletop RPG character sheet owned by an authenticated player.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the character owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the player who owns this character.",
+          "maxLength": 120
+        },
+        "gameSystem": {
+          "type": "string",
+          "description": "Identifier of the RPG system (e.g., delta-green).",
+          "enum": ["delta-green"],
+          "maxLength": 40
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Optional ID of the Game Master session this character is assigned to.",
+          "maxLength": 128
+        },
+        "sessionGmId": {
+          "type": "string",
+          "description": "Optional Firebase Auth UID of the Game Master whose session this character joined.",
+          "maxLength": 128
+        },
+        "fullNameAndAlias": {
+          "type": "string",
+          "description": "Agent last name, first name, and alias or code name.",
+          "maxLength": 200
+        },
+        "professionAndRank": {
+          "type": "string",
+          "description": "Agent profession and rank.",
+          "maxLength": 200
+        },
+        "employer": {
+          "type": "string",
+          "description": "Agent employer or agency.",
+          "maxLength": 200
+        },
+        "nationality": {
+          "type": "string",
+          "description": "Agent nationality.",
+          "maxLength": 120
+        },
+        "sex": {
+          "type": "string",
+          "description": "Agent sex marker.",
+          "maxLength": 20
+        },
+        "sexOtherText": {
+          "type": "string",
+          "description": "Optional custom sex specification.",
+          "maxLength": 100
+        },
+        "ageAndDob": {
+          "type": "string",
+          "description": "Agent age and date of birth.",
+          "maxLength": 100
+        },
+        "educationAndOccupation": {
+          "type": "string",
+          "description": "Education and occupational history.",
+          "maxLength": 2000
+        },
+        "portraitUrl": {
+          "type": "string",
+          "description": "URL or compressed data URI for character portrait.",
+          "maxLength": 700000
+        },
+        "physicalDescription": {
+          "type": "string",
+          "description": "Physical description of the character.",
+          "maxLength": 2000
+        },
+        "motivationsAndDisorders": {
+          "type": "string",
+          "description": "Personal motivations and mental disorders.",
+          "maxLength": 3000
+        },
+        "woundsAndAilments": {
+          "type": "string",
+          "description": "Wounds, injuries, and medical ailments.",
+          "maxLength": 3000
+        },
+        "firstAidAttempted": {
+          "type": "boolean",
+          "description": "Whether First Aid has been attempted since the last injury."
+        },
+        "armorAndGear": {
+          "type": "string",
+          "description": "Body armor and field equipment.",
+          "maxLength": 3000
+        },
+        "armorRating": {
+          "type": "integer",
+          "description": "Numeric body armor protection rating."
+        },
+        "personalDetailsAndNotes": {
+          "type": "string",
+          "description": "Personal details and operational notes.",
+          "maxLength": 5000
+        },
+        "developmentsHomeAndFamily": {
+          "type": "string",
+          "description": "Developments which affect home and family.",
+          "maxLength": 3000
+        },
+        "recruitmentNote": {
+          "type": "string",
+          "description": "Why the agent was recruited and agreed to join.",
+          "maxLength": 1000
+        },
+        "authorizingOfficer": {
+          "type": "string",
+          "description": "Authorizing officer designation.",
+          "maxLength": 200
+        },
+        "agentSignature": {
+          "type": "string",
+          "description": "Agent signature.",
+          "maxLength": 200
+        },
+        "sheetData": {
+          "type": "object",
+          "description": "Structured native map containing statistics, derived attributes, adaptation, bonds, skills, weapons, and specialTraining."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the character was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the character was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "gameSystem",
+        "fullNameAndAlias",
+        "professionAndRank",
+        "employer",
+        "nationality",
+        "sex",
+        "sexOtherText",
+        "ageAndDob",
+        "educationAndOccupation",
+        "portraitUrl",
+        "physicalDescription",
+        "motivationsAndDisorders",
+        "woundsAndAilments",
+        "firstAidAttempted",
+        "armorAndGear",
+        "armorRating",
+        "personalDetailsAndNotes",
+        "developmentsHomeAndFamily",
+        "recruitmentNote",
+        "authorizingOfficer",
+        "agentSignature",
+        "sheetData",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GmAsset": {
+      "title": "GmAsset",
+      "description": "A reusable Game Master asset (NPC card, Location card, Archive Image, or Styled Document) stored in the GM's database.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the Game Master who owns this asset.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "gameSystem": {
+          "type": "string",
+          "description": "Identifier of the RPG system (e.g., delta-green).",
+          "enum": ["delta-green"],
+          "maxLength": 40
+        },
+        "category": {
+          "type": "string",
+          "description": "Type of GM asset.",
+          "enum": ["npc", "location", "image", "document"],
+          "maxLength": 30
+        },
+        "title": {
+          "type": "string",
+          "description": "Title or name of the NPC, Location, Image, or Document.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Role, affiliation, coordinates, exhibit code, or document header.",
+          "maxLength": 200
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Optional image URL or data URI for the NPC portrait, location photo, or archive image.",
+          "maxLength": 700000
+        },
+        "publicContent": {
+          "type": "string",
+          "description": "Public description or document text visible to players when shared.",
+          "maxLength": 10000
+        },
+        "gmSecretNotes": {
+          "type": "string",
+          "description": "Private GM notes, hidden clues, or NPC combat stats never shown to players.",
+          "maxLength": 5000
+        },
+        "docStyle": {
+          "type": "string",
+          "description": "Visual style preset when category is document.",
+          "enum": [
+            "official-document",
+            "bloody-letter",
+            "napkin-note",
+            "old-computer",
+            "small-sign",
+            "large-sign",
+            "fantasy-scroll",
+            "night-sky",
+            "pond-water",
+            "clouds-sky",
+            ""
+          ],
+          "maxLength": 40
+        },
+        "docFont": {
+          "type": "string",
+          "description": "Typography preset when category is document.",
+          "enum": [
+            "mono",
+            "typewriter",
+            "handwritten",
+            "terminal",
+            "serif",
+            "display",
+            "cloud",
+            "fantasy",
+            ""
+          ],
+          "maxLength": 40
+        },
+        "docSignature": {
+          "type": "string",
+          "description": "Optional signature, stamp, or footer text on a document.",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the asset was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the asset was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "gameSystem",
+        "category",
+        "title",
+        "subtitle",
+        "imageUrl",
+        "publicContent",
+        "gmSecretNotes",
+        "docStyle",
+        "docFont",
+        "docSignature",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GameSession": {
+      "title": "GameSession",
+      "description": "A live tabletop RPG session hosted by a Game Master with invited players.",
+      "type": "object",
+      "properties": {
+        "gmId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the Game Master.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "gmName": {
+          "type": "string",
+          "description": "Display name of the Game Master.",
+          "maxLength": 120
+        },
+        "gmEmail": {
+          "type": "string",
+          "description": "Email address of the Game Master.",
+          "maxLength": 200
+        },
+        "gameSystem": {
+          "type": "string",
+          "description": "Identifier of the RPG system (e.g., delta-green).",
+          "enum": ["delta-green"],
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "description": "Operation or campaign session title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Session briefing or operational summary.",
+          "maxLength": 2000
+        },
+        "status": {
+          "type": "string",
+          "description": "Session lifecycle status.",
+          "enum": ["active", "paused", "archived"],
+          "maxLength": 30
+        },
+        "invitedEmails": {
+          "type": "array",
+          "description": "List of lowercase Gmail addresses invited to join this session (max 20)."
+        },
+        "joinedPlayers": {
+          "type": "array",
+          "description": "List of player objects who have joined and linked a character (max 20)."
+        },
+        "sceneState": {
+          "type": "object",
+          "description": "Current scene title, location, in-game date/time, and alert level."
+        },
+        "spotlightItem": {
+          "type": "object",
+          "description": "Currently spotlighted handout item shown prominently to all players."
+        },
+        "sharedItems": {
+          "type": "array",
+          "description": "History of NPCs, Locations, Images, and Styled Documents shared with players in this session."
+        },
+        "publicRolls": {
+          "type": "array",
+          "description": "Public dice rolls and announcements broadcast to the table."
+        },
+        "privateRolls": {
+          "type": "array",
+          "description": "Private GM dice rolls visible only to the Game Master."
+        },
+        "combatTracker": {
+          "type": "array",
+          "description": "Initiative and combat turn tracker entries."
+        },
+        "clocks": {
+          "type": "array",
+          "description": "Operational countdown and threat clocks."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the session was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the session was last updated."
+        }
+      },
+      "required": [
+        "gmId",
+        "gmName",
+        "gmEmail",
+        "gameSystem",
+        "title",
+        "description",
+        "status",
+        "invitedEmails",
+        "joinedPlayers",
+        "sceneState",
+        "spotlightItem",
+        "sharedItems",
+        "publicRolls",
+        "privateRolls",
+        "combatTracker",
+        "clocks",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/characters/{characterId}": {
+      "schema": {
+        "$ref": "#/entities/CharacterDossier"
+      },
+      "description": "Stores RPG character sheets owned by individual authenticated users and optionally linked to a GM session."
+    },
+    "/gmAssets/{assetId}": {
+      "schema": {
+        "$ref": "#/entities/GmAsset"
+      },
+      "description": "Stores reusable Game Master NPC cards, Location cards, Archive Images, and Styled Documents."
+    },
+    "/sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/GameSession"
+      },
+      "description": "Stores live Game Master sessions with invited player emails, shared handouts, and tabletop tools."
+    }
+  }
+}
