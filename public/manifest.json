@@ -1,0 +1,17 @@
+{
+  "name": "TTRPG Hub",
+  "short_name": "TTRPG Hub",
+  "description": "Cloud-synced tabletop RPG character sheet hub and Game Master session console.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0B0E0D",
+  "theme_color": "#070908",
+  "icons": [
+    {
+      "src": "/d20-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

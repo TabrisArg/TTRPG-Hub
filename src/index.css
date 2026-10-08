@@ -450,3 +450,24 @@
   background: var(--c-scrollbar-thumb);
   border-radius: 3px;
 }
+
+/* Native App Full Screen Mode Styling */
+html[data-app-fullscreen="true"],
+html:fullscreen,
+html:-webkit-full-screen {
+  background-color: var(--c-canvas);
+  overscroll-behavior: none;
+  height: 100dvh;
+}
+
+html[data-app-fullscreen="true"] body,
+html:fullscreen body,
+html:-webkit-full-screen body {
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
