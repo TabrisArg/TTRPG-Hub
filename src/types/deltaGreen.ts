@@ -16,7 +16,13 @@ export type DossierPage =
   | 'injuries-equipment'
   | 'remarks';
 
-export type GmAssetCategory = 'npc' | 'location' | 'image' | 'document';
+export type GmAssetCategory =
+  | 'npc'
+  | 'location'
+  | 'image'
+  | 'document'
+  | 'item'
+  | 'equipment';
 
 export type DocumentVisualStyle =
   | 'official-document'
@@ -96,6 +102,11 @@ export interface SharedSessionItem {
 export interface SessionRollEntry {
   id: string;
   rollerName: string;
+  rollerUid?: string;
+  characterId?: string;
+  characterName?: string;
+  characterPortraitUrl?: string;
+  characterProfession?: string;
   label: string;
   formula: string;
   result: number;
@@ -131,6 +142,8 @@ export interface SessionJoinedPlayer {
   email: string;
   characterId: string;
   characterName: string;
+  characterPortraitUrl?: string;
+  characterProfession?: string;
 }
 
 export interface SceneState {
@@ -231,6 +244,16 @@ export interface SpecialTrainingItem {
   skillOrStatUsed: string;
 }
 
+export interface EquippedCardItem {
+  id: string;
+  category: 'item' | 'equipment';
+  name: string;
+  imageUrl: string;
+  description: string;
+  effect?: string;
+  addedAt: string;
+}
+
 export interface AgentCharacter {
   id: string;
   updatedAt: string;
@@ -272,6 +295,7 @@ export interface AgentCharacter {
   personalDetailsAndNotes: string; // 17. PERSONAL DETAILS AND NOTES
   developmentsHomeAndFamily: string; // 18. DEVELOPMENTS WHICH AFFECT HOME AND FAMILY
   specialTraining: SpecialTrainingItem[]; // 19. SPECIAL TRAINING
+  equipmentCards?: EquippedCardItem[]; // Item & Equipment Cards added to Gear
   recruitmentNote: string; // Please indicate why this agent was recruited and why the agent agreed to be recruited.
   authorizingOfficer: string; // 20. AUTHORIZING OFFICER
   agentSignature: string; // 21. AGENT SIGNATURE

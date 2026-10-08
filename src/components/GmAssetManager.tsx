@@ -8,6 +8,8 @@ import {
   MapPin,
   Image as ImageIcon,
   FileText,
+  Package,
+  Shield,
   Eye,
   Check,
   ArrowLeft,
@@ -40,6 +42,14 @@ interface GmAssetManagerProps {
   onReturnToSession?: () => void;
   returnToSessionLabel?: string;
   onRestoreStarterAssets?: () => Promise<void>;
+  onAddToCharacterEquipment?: (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => Promise<void> | void;
+  equipTargetLabel?: string;
   hasActiveSession?: boolean;
   isSyncing?: boolean;
 }
@@ -64,6 +74,20 @@ const CATEGORY_SECTIONS: {
     subtitle: 'Green Boxes, crime scenes, safe houses, and regional sites',
     addButtonLabel: '+ Location',
     emptyMessage: 'No location cards in your database yet.',
+  },
+  {
+    id: 'item',
+    title: 'Item Cards',
+    subtitle: 'Items, clues, keys, and artifacts (Name, Image & Description) that players can add to their gear',
+    addButtonLabel: '+ Item Card',
+    emptyMessage: 'No item cards in your database yet.',
+  },
+  {
+    id: 'equipment',
+    title: 'Equipment Cards',
+    subtitle: 'Tactical gear, armor, and special devices (Name, Image, Description & Effect) that players can equip',
+    addButtonLabel: '+ Equipment Card',
+    emptyMessage: 'No equipment cards in your database yet.',
   },
   {
     id: 'image',
@@ -91,6 +115,8 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
   onReturnToSession,
   returnToSessionLabel = 'Return to GM Session Console',
   onRestoreStarterAssets,
+  onAddToCharacterEquipment,
+  equipTargetLabel,
   hasActiveSession = false,
   isSyncing = false,
 }) => {
@@ -100,6 +126,7 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
   const [previewAssetId, setPreviewAssetId] = useState<string | null>(null);
   const [zoomAsset, setZoomAsset] = useState<GmAsset | null>(null);
   const [justSharedAsset, setJustSharedAsset] = useState<GmAsset | null>(null);
+  const [justEquippedId, setJustEquippedId] = useState<string | null>(null);
   const [isSavingAsset, setIsSavingAsset] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -206,6 +233,8 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
     }
     if (category === 'npc') return 'Unnamed NPC';
     if (category === 'location') return 'Unnamed Location';
+    if (category === 'item') return 'Unnamed Item';
+    if (category === 'equipment') return 'Unnamed Equipment';
     return 'Archive Image';
   };
 
@@ -219,10 +248,10 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
     const payload = {
       category,
       title: resolvedTitle,
-      subtitle: subtitle.trim(),
+      subtitle: category === 'item' ? '' : subtitle.trim(),
       imageUrl: imageUrl.trim(),
       publicContent,
-      gmSecretNotes,
+      gmSecretNotes: category === 'item' || category === 'equipment' ? '' : gmSecretNotes,
       docStyle: category === 'document' ? docStyle : ('' as const),
       docFont: category === 'document' ? docFont : ('' as const),
       docSignature: category === 'document' ? docSignature.trim() : '',
@@ -278,6 +307,10 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
         return <UserSquare2 size={16} className="text-[#4ADE80]" />;
       case 'location':
         return <MapPin size={16} className="text-[#4ADE80]" />;
+      case 'item':
+        return <Package size={16} className="text-[#4ADE80]" />;
+      case 'equipment':
+        return <Shield size={16} className="text-[#4ADE80]" />;
       case 'image':
         return <ImageIcon size={16} className="text-[#4ADE80]" />;
       case 'document':
@@ -361,9 +394,17 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
               <h4 className="font-display text-sm font-bold text-[#E2E6E4] truncate">
                 {asset.title}
               </h4>
-              {asset.subtitle && (
-                <p className="text-[11px] font-mono-tabular text-[#8C9692] truncate">
-                  {asset.subtitle}
+              {asset.subtitle && asset.category !== 'item' && (
+                <p
+                  className={`text-[11px] font-mono-tabular truncate ${
+                    asset.category === 'equipment'
+                      ? 'text-[#4ADE80] font-semibold'
+                      : 'text-[#8C9692]'
+                  }`}
+                >
+                  {asset.category === 'equipment'
+                    ? `Effect: ${asset.subtitle}`
+                    : asset.subtitle}
                 </p>
               )}
               <p className="text-xs text-[#A5B0AC] line-clamp-2 mt-1">
@@ -378,6 +419,42 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
             </div>
           )}
         </div>
+
+        {(asset.category === 'item' || asset.category === 'equipment') &&
+          onAddToCharacterEquipment && (
+            <div className="pt-2 border-t border-[#232B28]">
+              <button
+                type="button"
+                onClick={async () => {
+                  await onAddToCharacterEquipment({
+                    category: asset.category as 'item' | 'equipment',
+                    name: asset.title,
+                    imageUrl: asset.imageUrl,
+                    description: asset.publicContent,
+                    effect: asset.category === 'equipment' ? asset.subtitle : '',
+                  });
+                  setJustEquippedId(asset.id);
+                  window.setTimeout(() => setJustEquippedId(null), 1800);
+                }}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#16A34A] text-[#4ADE80] text-xs font-mono-tabular font-semibold cursor-pointer"
+              >
+                {justEquippedId === asset.id ? (
+                  <>
+                    <Check size={13} />
+                    <span>Added to Gear!</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={13} />
+                    <span>
+                      Add to My Equipment
+                      {equipTargetLabel ? ` (${equipTargetLabel})` : ''}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
         {hasActiveSession && onShareAssetToSession && (
           <div className="pt-2.5 border-t border-[#232B28] flex flex-wrap items-center gap-2">
@@ -472,6 +549,16 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                 label: `Locations (${gmAssets.filter((a) => a.category === 'location').length})`,
               },
               {
+                id: 'item',
+                label: `Item Cards (${gmAssets.filter((a) => a.category === 'item').length})`,
+              },
+              {
+                id: 'equipment',
+                label: `Equipment Cards (${
+                  gmAssets.filter((a) => a.category === 'equipment').length
+                })`,
+              },
+              {
                 id: 'image',
                 label: `Archive Images (${gmAssets.filter((a) => a.category === 'image').length})`,
               },
@@ -515,6 +602,24 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
           >
             <MapPin size={13} className="text-[#4ADE80]" />
             <span>+ Location</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStartCreate('item')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#121715] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#E2E6E4] cursor-pointer"
+          >
+            <Package size={13} className="text-[#4ADE80]" />
+            <span>+ Item Card</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleStartCreate('equipment')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#121715] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#E2E6E4] cursor-pointer"
+          >
+            <Shield size={13} className="text-[#4ADE80]" />
+            <span>+ Equipment Card</span>
           </button>
 
           <button
@@ -564,13 +669,18 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
               <h3 className="font-display text-lg font-bold text-[#E2E6E4]">
                 {category === 'npc' && 'NPC Character Card Builder'}
                 {category === 'location' && 'Location Reconnaissance Card Builder'}
+                {category === 'item' && 'Item Card Builder (Name, Image & Description)'}
+                {category === 'equipment' &&
+                  'Equipment Card Builder (Name, Image, Description & Effect)'}
                 {category === 'image' && 'Archive Image / Evidence Builder'}
                 {category === 'document' && 'Custom Styled Document & Handout Designer'}
               </h3>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {(['npc', 'location', 'image', 'document'] as GmAssetCategory[]).map((cat) => (
+              {(
+                ['npc', 'location', 'item', 'equipment', 'image', 'document'] as GmAssetCategory[]
+              ).map((cat) => (
                 <button
                   key={cat}
                   type="button"
@@ -596,6 +706,10 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                     ? 'NPC NAME / ALIAS'
                     : category === 'location'
                     ? 'LOCATION NAME'
+                    : category === 'item'
+                    ? 'ITEM NAME'
+                    : category === 'equipment'
+                    ? 'EQUIPMENT NAME'
                     : category === 'image'
                     ? 'IMAGE / EXHIBIT TITLE'
                     : 'DOCUMENT HEADER / TITLE (OPTIONAL — AUTO-FILLED IF BLANK)'}
@@ -609,6 +723,10 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                       ? 'e.g., Dr. Evelyn Cross // CDC Liaison'
                       : category === 'location'
                       ? 'e.g., Millbrook Cold Storage Warehouse'
+                      : category === 'item'
+                      ? 'e.g., Rusted Brass Key, Strange Amber Vial...'
+                      : category === 'equipment'
+                      ? 'e.g., AN/PVS-14 Night Vision Goggles, Kevlar Tactical Vest...'
                       : category === 'image'
                       ? 'e.g., Exhibit A — Crime Scene Polaroid'
                       : 'e.g., AUTOPSY REPORT #44-B / DO NOT OPEN'
@@ -617,28 +735,40 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                  {category === 'npc'
-                    ? 'ROLE / AFFILIATION / OCCUPATION'
-                    : category === 'location'
-                    ? 'COORDINATES / REGION / THREAT LEVEL'
-                    : category === 'image'
-                    ? 'EXHIBIT CODE / DATE TAKEN'
-                    : 'SUBTITLE / CLASSIFICATION STAMP / CONTEXT'}
-                </label>
-                <input
-                  type="text"
-                  value={subtitle}
-                  onChange={(e) => setSubtitle(e.target.value)}
-                  placeholder={
-                    category === 'document'
-                      ? 'e.g., TOP SECRET // RECOVERED FROM ROOM 402'
-                      : 'Optional subtitle or metadata...'
-                  }
-                  className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-xs text-[#E2E6E4] focus:outline-none"
-                />
-              </div>
+              {category !== 'item' && (
+                <div>
+                  <label
+                    className={`block font-mono-tabular text-[11px] mb-1 ${
+                      category === 'equipment'
+                        ? 'text-[#4ADE80] font-semibold'
+                        : 'text-[#8C9692]'
+                    }`}
+                  >
+                    {category === 'npc'
+                      ? 'ROLE / AFFILIATION / OCCUPATION'
+                      : category === 'location'
+                      ? 'COORDINATES / REGION / THREAT LEVEL'
+                      : category === 'equipment'
+                      ? 'EQUIPMENT EFFECT / MECHANICAL BONUS'
+                      : category === 'image'
+                      ? 'EXHIBIT CODE / DATE TAKEN'
+                      : 'SUBTITLE / CLASSIFICATION STAMP / CONTEXT'}
+                  </label>
+                  <input
+                    type="text"
+                    value={subtitle}
+                    onChange={(e) => setSubtitle(e.target.value)}
+                    placeholder={
+                      category === 'document'
+                        ? 'e.g., TOP SECRET // RECOVERED FROM ROOM 402'
+                        : category === 'equipment'
+                        ? 'e.g., +20% Alertness in darkness, Armor Rating +3 vs ballistic...'
+                        : 'Optional subtitle or metadata...'
+                    }
+                    className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-xs text-[#E2E6E4] focus:outline-none"
+                  />
+                </div>
+              )}
 
               {/* Document Style & Font Pickers (Only when category === 'document') */}
               {category === 'document' && (
@@ -748,6 +878,10 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                 <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
                   {category === 'document'
                     ? 'DOCUMENT BODY TEXT (SHOWN TO PLAYERS)'
+                    : category === 'item'
+                    ? 'ITEM DESCRIPTION'
+                    : category === 'equipment'
+                    ? 'EQUIPMENT DESCRIPTION'
                     : 'PUBLIC DESCRIPTION (SHOWN TO PLAYERS WHEN SHARED)'}
                 </label>
                 <textarea
@@ -757,24 +891,30 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                   placeholder={
                     category === 'document'
                       ? 'Type the text of the document, letter, napkin note, computer terminal, or sign...'
+                      : category === 'item'
+                      ? 'Describe the item appearance, origin, or details...'
+                      : category === 'equipment'
+                      ? 'Describe the piece of equipment...'
                       : 'Visible appearance, demeanor, or public briefing notes...'
                   }
                   className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-xs sm:text-sm text-[#E2E6E4] focus:outline-none resize-y"
                 />
               </div>
 
-              <div>
-                <label className="block font-mono-tabular text-[11px] text-[#FBBF24] mb-1">
-                  GM SECRET NOTES / NPC STATS / HIDDEN CLUES (NEVER SENT TO PLAYERS)
-                </label>
-                <textarea
-                  rows={3}
-                  value={gmSecretNotes}
-                  onChange={(e) => setGmSecretNotes(e.target.value)}
-                  placeholder="Private GM notes, NPC HP/SAN/Weapon stats, hidden traps, or true motives..."
-                  className="w-full bg-[#0B0E0D] border border-[#D97706]/50 focus:border-[#FBBF24] rounded px-3 py-2 text-xs text-[#E2E6E4] focus:outline-none resize-y"
-                />
-              </div>
+              {category !== 'item' && category !== 'equipment' && (
+                <div>
+                  <label className="block font-mono-tabular text-[11px] text-[#FBBF24] mb-1">
+                    GM SECRET NOTES / NPC STATS / HIDDEN CLUES (NEVER SENT TO PLAYERS)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={gmSecretNotes}
+                    onChange={(e) => setGmSecretNotes(e.target.value)}
+                    placeholder="Private GM notes, NPC HP/SAN/Weapon stats, hidden traps, or true motives..."
+                    className="w-full bg-[#0B0E0D] border border-[#D97706]/50 focus:border-[#FBBF24] rounded px-3 py-2 text-xs text-[#E2E6E4] focus:outline-none resize-y"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Right Column: Live Interactive Preview */}
@@ -914,6 +1054,8 @@ export const GmAssetManager: React.FC<GmAssetManagerProps> = ({
                     docSignature={item.docSignature}
                     gmSecretNotes={item.gmSecretNotes}
                     showGmSecrets={true}
+                    onAddToCharacterEquipment={onAddToCharacterEquipment}
+                    equipTargetLabel={equipTargetLabel}
                   />
                 </>
               );

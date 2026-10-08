@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
-import { Trash2, RotateCw, Shield } from 'lucide-react';
-import { AgentCharacter, WeaponItem } from '../types/deltaGreen';
+import React, { useRef, useState } from 'react';
+import {
+  Trash2,
+  RotateCw,
+  Shield,
+  Package,
+  Plus,
+  Upload,
+  ZoomIn,
+  X,
+} from 'lucide-react';
+import {
+  AgentCharacter,
+  EquippedCardItem,
+  WeaponItem,
+} from '../types/deltaGreen';
 import { NumericSteppedInput } from './NumericSteppedInput';
 import { WEAPON_ARMORY_PRESETS } from '../data/presets';
+import { WebImageSearchPicker } from './WebImageSearchPicker';
+import { ImageZoomModal } from './ImageZoomModal';
 
 interface InjuriesAndEquipmentSectionProps {
   agent: AgentCharacter;
@@ -14,6 +29,90 @@ export const InjuriesAndEquipmentSection: React.FC<InjuriesAndEquipmentSectionPr
   onUpdate,
 }) => {
   const [selectedPresetIdx, setSelectedPresetIdx] = useState<string>('');
+  const [showCreateCardForm, setShowCreateCardForm] = useState<
+    false | 'item' | 'equipment'
+  >(false);
+  const [cardName, setCardName] = useState('');
+  const [cardImageUrl, setCardImageUrl] = useState('');
+  const [cardDescription, setCardDescription] = useState('');
+  const [cardEffect, setCardEffect] = useState('');
+  const [zoomCard, setZoomCard] = useState<EquippedCardItem | null>(null);
+  const cardFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const equipmentCards = agent.equipmentCards || [];
+
+  const handleCardImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rawDataUrl = String(ev.target?.result || '');
+      if (!rawDataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 720;
+        let w = img.naturalWidth || 600;
+        let h = img.naturalHeight || 600;
+        if (w > maxDim || h > maxDim) {
+          const scale = Math.min(maxDim / w, maxDim / h);
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          setCardImageUrl(canvas.toDataURL('image/jpeg', 0.8));
+        } else {
+          setCardImageUrl(rawDataUrl);
+        }
+      };
+      img.onerror = () => setCardImageUrl(rawDataUrl);
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleAddGearCard = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showCreateCardForm) return;
+    const cleanName =
+      cardName.trim() ||
+      (showCreateCardForm === 'equipment' ? 'Unnamed Equipment' : 'Unnamed Item');
+
+    const newCard: EquippedCardItem = {
+      id: `gear-card-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      category: showCreateCardForm,
+      name: cleanName,
+      imageUrl: cardImageUrl.trim(),
+      description: cardDescription.trim(),
+      effect: showCreateCardForm === 'equipment' ? cardEffect.trim() : '',
+      addedAt: new Date().toISOString(),
+    };
+
+    onUpdate((prev) => ({
+      ...prev,
+      updatedAt: new Date().toISOString(),
+      equipmentCards: [...(prev.equipmentCards || []), newCard],
+    }));
+
+    setCardName('');
+    setCardImageUrl('');
+    setCardDescription('');
+    setCardEffect('');
+    setShowCreateCardForm(false);
+  };
+
+  const handleRemoveGearCard = (cardId: string) => {
+    onUpdate((prev) => ({
+      ...prev,
+      updatedAt: new Date().toISOString(),
+      equipmentCards: (prev.equipmentCards || []).filter((c) => c.id !== cardId),
+    }));
+  };
 
   const handleWeaponChange = <K extends keyof WeaponItem>(
     id: string,
@@ -207,6 +306,254 @@ export const InjuriesAndEquipmentSection: React.FC<InjuriesAndEquipmentSectionPr
               placeholder="Kevlar vest (Armor 3), tactical helmet, encrypted comms, burner phones, Green Box requisitioned items..."
               className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-xs sm:text-sm leading-relaxed text-[#E2E6E4] focus:outline-none resize-y"
             />
+
+            {/* EQUIPPED ITEM & EQUIPMENT CARDS INSIDE GEAR SECTION */}
+            <div className="mt-4 pt-3.5 border-t border-[#232B28] space-y-3">
+              {zoomCard && zoomCard.imageUrl && (
+                <ImageZoomModal
+                  imageUrl={zoomCard.imageUrl}
+                  title={zoomCard.name}
+                  subtitle={
+                    zoomCard.category === 'equipment'
+                      ? zoomCard.effect || 'Equipment Card'
+                      : 'Item Card'
+                  }
+                  returnLabel="Return to Gear Section"
+                  onClose={() => setZoomCard(null)}
+                />
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Package size={14} className="text-[#4ADE80]" />
+                  <span className="font-mono-tabular text-[11px] font-semibold text-[#E2E6E4]">
+                    EQUIPPED ITEM & EQUIPMENT CARDS ({equipmentCards.length})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateCardForm('item');
+                      setCardEffect('');
+                    }}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#4ADE80] cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    <span>+ Item Card</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCardForm('equipment')}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#4ADE80] cursor-pointer"
+                  >
+                    <Plus size={12} />
+                    <span>+ Equipment Card</span>
+                  </button>
+                </div>
+              </div>
+
+              {showCreateCardForm && (
+                <form
+                  onSubmit={handleAddGearCard}
+                  className="bg-[#0B0E0D] border-2 border-[#16A34A] rounded p-3.5 space-y-3"
+                >
+                  <div className="flex items-center justify-between border-b border-[#232B28] pb-2">
+                    <span className="font-mono-tabular text-xs font-semibold text-[#4ADE80] uppercase">
+                      {showCreateCardForm === 'item'
+                        ? 'CREATE ITEM CARD (NAME, IMAGE & DESCRIPTION)'
+                        : 'CREATE EQUIPMENT CARD (NAME, IMAGE, DESCRIPTION & EFFECT)'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateCardForm(false)}
+                      className="text-[#8C9692] hover:text-[#E2E6E4] cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+                        {showCreateCardForm === 'item'
+                          ? 'ITEM NAME *'
+                          : 'EQUIPMENT NAME *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={cardName}
+                        onChange={(e) => setCardName(e.target.value)}
+                        placeholder={
+                          showCreateCardForm === 'item'
+                            ? 'e.g., Green Box Keycard #44, Strange Amber Vial...'
+                            : 'e.g., AN/PVS-14 Night Vision Goggles, Level III Tactical Vest...'
+                        }
+                        className="w-full bg-[#121715] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+                        IMAGE URL, UPLOAD, OR WEB IMAGE SEARCH
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <input
+                          type="text"
+                          value={cardImageUrl}
+                          onChange={(e) => setCardImageUrl(e.target.value)}
+                          placeholder="Paste image URL or search..."
+                          className="flex-1 min-w-[130px] bg-[#121715] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => cardFileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#121715] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#4ADE80] cursor-pointer"
+                        >
+                          <Upload size={12} />
+                          <span>Upload</span>
+                        </button>
+                        <input
+                          ref={cardFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCardImageUpload}
+                          className="hidden"
+                        />
+                        <WebImageSearchPicker
+                          currentImageUrl={cardImageUrl}
+                          defaultQuery={cardName}
+                          onSelectImageUrl={(url) => setCardImageUrl(url)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+                      DESCRIPTION
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={cardDescription}
+                      onChange={(e) => setCardDescription(e.target.value)}
+                      placeholder="Describe the item or piece of equipment..."
+                      className="w-full bg-[#121715] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                    />
+                  </div>
+
+                  {showCreateCardForm === 'equipment' && (
+                    <div>
+                      <label className="block font-mono-tabular text-[10px] text-[#4ADE80] font-semibold mb-1">
+                        EQUIPMENT EFFECT / MECHANICAL BONUS
+                      </label>
+                      <input
+                        type="text"
+                        value={cardEffect}
+                        onChange={(e) => setCardEffect(e.target.value)}
+                        placeholder="e.g., +20% Alertness in darkness, Armor Rating +3 vs ballistic..."
+                        className="w-full bg-[#121715] border border-[#16A34A]/60 focus:border-[#16A34A] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateCardForm(false)}
+                      className="px-3 py-1.5 rounded bg-[#121715] border border-[#232B28] text-xs font-mono-tabular text-[#A5B0AC] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3.5 py-1.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
+                    >
+                      Add to My Gear
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {equipmentCards.length === 0 ? (
+                <div className="bg-[#0B0E0D] border border-[#232B28] rounded p-3 text-xs text-[#68736E]">
+                  No Item or Equipment cards equipped yet. Create an Item or Equipment card above, or click &ldquo;Add to My Equipment&rdquo; on any Item or Equipment card shared in a session.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {equipmentCards.map((card) => (
+                    <div
+                      key={card.id}
+                      className="bg-[#0B0E0D] border border-[#232B28] rounded p-3 flex gap-3 items-start justify-between"
+                    >
+                      <div className="flex gap-3 min-w-0 flex-1">
+                        {card.imageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => setZoomCard(card)}
+                            title="Zoom into item/equipment image"
+                            className="relative w-16 h-16 rounded border border-[#232B28] hover:border-[#16A34A] overflow-hidden shrink-0 cursor-zoom-in bg-[#121715]"
+                          >
+                            <img
+                              src={card.imageUrl}
+                              alt={card.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover"
+                            />
+                            <span className="absolute bottom-0.5 right-0.5 p-0.5 rounded bg-black/75 text-[#4ADE80]">
+                              <ZoomIn size={10} />
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="w-16 h-16 rounded border border-[#232B28] bg-[#121715] flex items-center justify-center shrink-0 text-[#4ADE80]">
+                            {card.category === 'equipment' ? (
+                              <Shield size={22} />
+                            ) : (
+                              <Package size={22} />
+                            )}
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-1.5 font-mono-tabular text-[10px] uppercase text-[#4ADE80]">
+                            <span>
+                              {card.category === 'equipment'
+                                ? 'EQUIPMENT CARD'
+                                : 'ITEM CARD'}
+                            </span>
+                          </div>
+                          <h4 className="font-display text-sm font-bold text-[#E2E6E4] truncate">
+                            {card.name}
+                          </h4>
+                          {card.description && (
+                            <p className="text-xs text-[#A5B0AC] whitespace-pre-wrap leading-snug">
+                              {card.description}
+                            </p>
+                          )}
+                          {card.category === 'equipment' && card.effect && (
+                            <div className="mt-1 bg-[#121916] border border-[#16A34A]/50 rounded px-2 py-1 text-[11px] text-[#4ADE80]">
+                              <strong>Effect:</strong>{' '}
+                              <span className="text-[#E2E6E4]">{card.effect}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGearCard(card.id)}
+                        title="Remove card from gear"
+                        className="p-1 text-[#68736E] hover:text-[#F87171] cursor-pointer shrink-0"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="bg-[#0B0E0D] border-b border-[#232B28] px-3 py-2 text-center text-xs italic text-[#8C9692]">

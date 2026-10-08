@@ -4,6 +4,8 @@ import {
   MapPin,
   Image as ImageIcon,
   FileText,
+  Package,
+  Shield,
   Check,
   X,
   FolderPlus,
@@ -68,6 +70,22 @@ const LIBRARY_CATEGORY_OPTIONS: {
       'Populates the attached image section on a new document card, leaving text blank to fill in later.',
     defaultName: 'Untitled Document',
     icon: <FileText size={18} className="text-[#4ADE80]" />,
+  },
+  {
+    id: 'item',
+    label: 'Item Card',
+    description:
+      'Creates an Item Card with a name, an image, and a description that players can add to their gear.',
+    defaultName: 'Untitled Item',
+    icon: <Package size={18} className="text-[#4ADE80]" />,
+  },
+  {
+    id: 'equipment',
+    label: 'Equipment Card',
+    description:
+      'Creates an Equipment Card with a name, an image, a description, and an effect for player gear.',
+    defaultName: 'Untitled Equipment',
+    icon: <Shield size={18} className="text-[#4ADE80]" />,
   },
 ];
 

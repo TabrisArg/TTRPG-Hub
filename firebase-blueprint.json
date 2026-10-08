@@ -196,7 +196,7 @@
         "category": {
           "type": "string",
           "description": "Type of GM asset.",
-          "enum": ["npc", "location", "image", "document"],
+          "enum": ["npc", "location", "image", "document", "item", "equipment"],
           "maxLength": 30
         },
         "title": {

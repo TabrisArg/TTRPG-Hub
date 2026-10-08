@@ -187,6 +187,7 @@ export function buildFirestoreDossierPayload(
       foreignLanguagesAndOther: (agent.foreignLanguagesAndOther || []).slice(0, 25),
       weapons: (agent.weapons || []).slice(0, 15),
       specialTraining: (agent.specialTraining || []).slice(0, 20),
+      equipmentCards: (agent.equipmentCards || []).slice(0, 40),
     },
     updatedAt: serverTimestamp(),
   };
@@ -243,6 +244,7 @@ export function mapFirestoreDocToAgent(
     foreignLanguagesAndOther: sd.foreignLanguagesAndOther || [],
     weapons: sd.weapons || [],
     specialTraining: sd.specialTraining || [],
+    equipmentCards: sd.equipmentCards || [],
   };
 }
 
@@ -334,7 +336,7 @@ export async function createGmAsset(
       gameSystem: 'delta-green',
       category: asset.category,
       title: safeStr((asset.title || '').trim() || 'Untitled Asset', 200),
-      subtitle: safeStr(asset.subtitle, 300),
+      subtitle: safeStr(asset.subtitle, 500),
       imageUrl: safeStr(asset.imageUrl, 850000),
       publicContent: safeStr(asset.publicContent, 25000),
       gmSecretNotes: safeStr(asset.gmSecretNotes, 15000),
@@ -358,7 +360,7 @@ export async function updateGmAsset(asset: GmAsset): Promise<void> {
     const mutablePayload = {
       category: asset.category,
       title: safeStr((asset.title || '').trim() || 'Untitled Asset', 200),
-      subtitle: safeStr(asset.subtitle, 300),
+      subtitle: safeStr(asset.subtitle, 500),
       imageUrl: safeStr(asset.imageUrl, 850000),
       publicContent: safeStr(asset.publicContent, 25000),
       gmSecretNotes: safeStr(asset.gmSecretNotes, 15000),

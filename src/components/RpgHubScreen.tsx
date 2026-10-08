@@ -68,6 +68,13 @@ interface RpgHubScreenProps {
   activeGmSession?: GameSession | null;
   onShareAssetToActiveSession?: (asset: GmAsset, asSpotlight: boolean) => Promise<void>;
   onRestoreStarterAssets?: () => Promise<void>;
+  onAddToCharacterEquipment?: (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => Promise<void> | void;
   isSyncing: boolean;
 }
 
@@ -121,6 +128,7 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
   activeGmSession,
   onShareAssetToActiveSession,
   onRestoreStarterAssets,
+  onAddToCharacterEquipment,
   isSyncing,
 }) => {
   const themeMeta = getThemeMeta(visualTheme);
@@ -1133,10 +1141,10 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
                   <div>
                     <h2 className="font-display text-lg sm:text-xl font-bold text-[#E2E6E4] flex items-center gap-2">
                       <Shield size={18} className="text-[#4ADE80]" />
-                      <span>03. Game Master Section — NPCs, Locations, Images & Styled Documents</span>
+                      <span>03. Game Master Section — NPCs, Locations, Items, Equipment, Images & Styled Documents</span>
                     </h2>
                     <p className="text-xs text-[#8C9692] mt-0.5">
-                      Prepare NPC character cards, locations, archive images, and custom-styled documents (Official Document, Bloody Letter, Note in a Napkin, Old School Computer Text, Small Sign, Large Sign) stored in your database to share during sessions
+                      Prepare NPC character cards, locations, item cards, equipment cards, archive images, and custom-styled documents stored in your database to share during sessions or equip onto characters
                     </p>
                   </div>
                 </div>
@@ -1153,6 +1161,15 @@ export const RpgHubScreen: React.FC<RpgHubScreenProps> = ({
                     onDeleteAsset={onDeleteGmAsset}
                     hasActiveSession={false}
                     onRestoreStarterAssets={onRestoreStarterAssets}
+                    onAddToCharacterEquipment={onAddToCharacterEquipment}
+                    equipTargetLabel={
+                      (
+                        agents.find((a) => a.id === activeAgentId) ||
+                        agents[0]
+                      )?.fullNameAndAlias
+                        ?.split('//')[0]
+                        .trim() || undefined
+                    }
                     isSyncing={isSyncing}
                   />
                 )}

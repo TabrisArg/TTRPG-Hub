@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Send,
   Clock,
@@ -12,6 +12,10 @@ import {
   UserSquare2,
   MapPin,
   Image as ImageIcon,
+  Package,
+  Shield,
+  Upload,
+  X,
   ZoomIn,
   Database,
   Plus,
@@ -27,6 +31,7 @@ import { ScribbleStudioModal } from './ScribbleStudioModal';
 import { ImageZoomModal } from './ImageZoomModal';
 import { AddToGmLibraryModal } from './AddToGmLibraryModal';
 import { CampaignDateTimePicker } from './CampaignDateTimePicker';
+import { WebImageSearchPicker } from './WebImageSearchPicker';
 
 interface SessionMessageBoardProps {
   session: GameSession;
@@ -53,6 +58,14 @@ interface SessionMessageBoardProps {
   onSaveToGmLibrary?: (
     draft: Omit<GmAsset, 'id' | 'ownerId' | 'gameSystem' | 'updatedAt'>
   ) => Promise<string | void>;
+  onAddToCharacterEquipment?: (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => Promise<void> | void;
+  equipTargetLabel?: string;
   onOpenGmDatabaseTab?: () => void;
   onOpenQuickCreateTab?: () => void;
 }
@@ -95,6 +108,8 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
   onApplyTimeSkip,
   onReturnToPresent,
   onSaveToGmLibrary,
+  onAddToCharacterEquipment,
+  equipTargetLabel,
   onOpenGmDatabaseTab,
   onOpenQuickCreateTab,
 }) => {
@@ -102,6 +117,17 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
 
   const [messageText, setMessageText] = useState<string>('');
   const [isSendingMessage, setIsSendingMessage] = useState<boolean>(false);
+
+  // Quick Item / Equipment Card Creator state (Available to all users)
+  const [showCreateCardDrawer, setShowCreateCardDrawer] = useState<
+    false | 'item' | 'equipment'
+  >(false);
+  const [cardTitle, setCardTitle] = useState<string>('');
+  const [cardImageUrl, setCardImageUrl] = useState<string>('');
+  const [cardDescription, setCardDescription] = useState<string>('');
+  const [cardEffect, setCardEffect] = useState<string>('');
+  const [isPostingCard, setIsPostingCard] = useState<boolean>(false);
+  const cardFileRef = useRef<HTMLInputElement | null>(null);
 
   // Time Skip & Session Date Panel state (GM)
   const [showTimeSkipPanel, setShowTimeSkipPanel] = useState<boolean>(false);
@@ -230,6 +256,78 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
     await onPostTimelineEntry(entry, canUseGmControls);
   };
 
+  const handleCardImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rawDataUrl = String(ev.target?.result || '');
+      if (!rawDataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 760;
+        let w = img.naturalWidth || 600;
+        let h = img.naturalHeight || 600;
+        if (w > maxDim || h > maxDim) {
+          const scale = Math.min(maxDim / w, maxDim / h);
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          setCardImageUrl(canvas.toDataURL('image/jpeg', 0.8));
+        } else {
+          setCardImageUrl(rawDataUrl);
+        }
+      };
+      img.onerror = () => setCardImageUrl(rawDataUrl);
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handlePostItemOrEquipmentCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showCreateCardDrawer || isPostingCard) return;
+    const cleanTitle =
+      cardTitle.trim() ||
+      (showCreateCardDrawer === 'equipment'
+        ? 'Unnamed Equipment'
+        : 'Unnamed Item');
+
+    setIsPostingCard(true);
+    try {
+      const entry: SharedSessionItem = {
+        id: `card-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        entryType: 'asset',
+        category: showCreateCardDrawer,
+        title: cleanTitle,
+        subtitle: showCreateCardDrawer === 'equipment' ? cardEffect.trim() : '',
+        imageUrl: cardImageUrl.trim(),
+        publicContent: cardDescription.trim(),
+        docStyle: '',
+        docFont: '',
+        docSignature: '',
+        sharedAt: nowTimeString(),
+        authorName: currentUserName,
+        authorRole: canUseGmControls ? 'GM' : 'PLAYER',
+      };
+      await onPostTimelineEntry(entry, canUseGmControls);
+      setCardTitle('');
+      setCardImageUrl('');
+      setCardDescription('');
+      setCardEffect('');
+      setShowCreateCardDrawer(false);
+    } finally {
+      setIsPostingCard(false);
+    }
+  };
+
   const timelineItems = session.sharedItems || [];
 
   // Display latest messages and timeline entries on top
@@ -339,6 +437,40 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
           >
             <PenTool size={13} />
             <span>Create Blank Document / Scribble</span>
+          </button>
+
+          {/* Create Item Card / Equipment Card Buttons (Available to ALL Users) */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreateCardDrawer((prev) => (prev === 'item' ? false : 'item'));
+              setCardEffect('');
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono-tabular font-semibold border cursor-pointer ${
+              showCreateCardDrawer === 'item'
+                ? 'bg-[#16A34A] border-[#16A34A] text-white'
+                : 'bg-[#0B0E0D] hover:bg-[#19201E] border-[#232B28] text-[#4ADE80]'
+            }`}
+          >
+            <Package size={13} />
+            <span>+ Item Card</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setShowCreateCardDrawer((prev) =>
+                prev === 'equipment' ? false : 'equipment'
+              )
+            }
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono-tabular font-semibold border cursor-pointer ${
+              showCreateCardDrawer === 'equipment'
+                ? 'bg-[#16A34A] border-[#16A34A] text-white'
+                : 'bg-[#0B0E0D] hover:bg-[#19201E] border-[#232B28] text-[#4ADE80]'
+            }`}
+          >
+            <Shield size={13} />
+            <span>+ Equipment Card</span>
           </button>
 
           {/* GM Time Skip & Session Date Button */}
@@ -497,6 +629,149 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ====================================================================
+          2B. QUICK ITEM CARD / EQUIPMENT CARD CREATOR DRAWER (ALL USERS)
+         ==================================================================== */}
+      {showCreateCardDrawer && (
+        <form
+          onSubmit={handlePostItemOrEquipmentCard}
+          className="p-4 border-b-2 border-[#16A34A] bg-[#0F1714] space-y-3"
+        >
+          <div className="flex items-center justify-between border-b border-[#232B28] pb-2">
+            <div className="flex items-center gap-2">
+              {showCreateCardDrawer === 'item' ? (
+                <Package size={15} className="text-[#4ADE80]" />
+              ) : (
+                <Shield size={15} className="text-[#4ADE80]" />
+              )}
+              <span className="font-mono-tabular text-xs font-bold text-[#4ADE80] uppercase">
+                {showCreateCardDrawer === 'item'
+                  ? 'CREATE & SHARE ITEM CARD (NAME, IMAGE & DESCRIPTION)'
+                  : 'CREATE & SHARE EQUIPMENT CARD (NAME, IMAGE, DESCRIPTION & EFFECT)'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCreateCardDrawer(false)}
+              className="text-[#8C9692] hover:text-[#E2E6E4] cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+                {showCreateCardDrawer === 'item'
+                  ? 'ITEM NAME *'
+                  : 'EQUIPMENT NAME *'}
+              </label>
+              <input
+                type="text"
+                required
+                value={cardTitle}
+                onChange={(e) => setCardTitle(e.target.value)}
+                placeholder={
+                  showCreateCardDrawer === 'item'
+                    ? 'e.g., Green Box Keycard #44, Obsidian Amulet...'
+                    : 'e.g., AN/PVS-14 Night Vision Goggles, Kevlar Vest...'
+                }
+                className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+                IMAGE URL, UPLOAD, OR WEB IMAGE SEARCH
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <input
+                  type="text"
+                  value={cardImageUrl}
+                  onChange={(e) => setCardImageUrl(e.target.value)}
+                  placeholder="Paste image URL or search..."
+                  className="flex-1 min-w-[140px] bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => cardFileRef.current?.click()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#232B28] text-xs font-mono-tabular text-[#4ADE80] cursor-pointer"
+                >
+                  <Upload size={12} />
+                  <span>Upload</span>
+                </button>
+                <input
+                  ref={cardFileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCardImageFileUpload}
+                  className="hidden"
+                />
+                <WebImageSearchPicker
+                  currentImageUrl={cardImageUrl}
+                  defaultQuery={cardTitle}
+                  onSelectImageUrl={(url) => setCardImageUrl(url)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-mono-tabular text-[10px] text-[#8C9692] mb-1">
+              DESCRIPTION
+            </label>
+            <textarea
+              rows={2}
+              value={cardDescription}
+              onChange={(e) => setCardDescription(e.target.value)}
+              placeholder="Write the item or equipment description..."
+              className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+            />
+          </div>
+
+          {showCreateCardDrawer === 'equipment' && (
+            <div>
+              <label className="block font-mono-tabular text-[10px] text-[#4ADE80] font-semibold mb-1">
+                EQUIPMENT EFFECT / BONUS
+              </label>
+              <input
+                type="text"
+                value={cardEffect}
+                onChange={(e) => setCardEffect(e.target.value)}
+                placeholder="e.g., +20% Alertness in darkness, Armor Rating +3 vs ballistic..."
+                className="w-full bg-[#0B0E0D] border border-[#16A34A]/60 focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCreateCardDrawer(false)}
+              className="px-3 py-1.5 rounded bg-[#0B0E0D] border border-[#232B28] text-xs font-mono-tabular text-[#A5B0AC] cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPostingCard}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
+            >
+              <Send size={13} />
+              <span>
+                {isPostingCard
+                  ? 'Sharing...'
+                  : `Share ${
+                      showCreateCardDrawer === 'equipment'
+                        ? 'Equipment Card'
+                        : 'Item Card'
+                    } to Session`}
+              </span>
+            </button>
+          </div>
+        </form>
       )}
 
       {/* ====================================================================
@@ -666,6 +941,8 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
                     <span className="inline-flex items-center gap-1 font-mono-tabular text-[10px] font-semibold uppercase text-[#4ADE80]">
                       {item.category === 'npc' && <UserSquare2 size={12} />}
                       {item.category === 'location' && <MapPin size={12} />}
+                      {item.category === 'item' && <Package size={12} />}
+                      {item.category === 'equipment' && <Shield size={12} />}
                       {item.category === 'image' && <ImageIcon size={12} />}
                       {item.category === 'document' && <FileText size={12} />}
                       <span>
@@ -761,6 +1038,8 @@ export const SessionMessageBoard: React.FC<SessionMessageBoardProps> = ({
                   compact={true}
                   onShareScribbleToTimeline={handleShareScribbleToTimeline}
                   onSaveToGmLibrary={onSaveToGmLibrary}
+                  onAddToCharacterEquipment={onAddToCharacterEquipment}
+                  equipTargetLabel={equipTargetLabel}
                 />
               </div>
             );

@@ -46,7 +46,8 @@ service cloud.firestore {
           'skills',
           'foreignLanguagesAndOther',
           'weapons',
-          'specialTraining'
+          'specialTraining',
+          'equipmentCards'
         ])
         && sd.statistics is map
         && sd.derived is map
@@ -60,7 +61,8 @@ service cloud.firestore {
         && sd.weapons is list && sd.weapons.size() <= 15
         && (sd.weapons.size() == 0 || sd.weapons[0] is map)
         && sd.specialTraining is list && sd.specialTraining.size() <= 20
-        && (sd.specialTraining.size() == 0 || sd.specialTraining[0] is map);
+        && (sd.specialTraining.size() == 0 || sd.specialTraining[0] is map)
+        && (!('equipmentCards' in sd) || (sd.equipmentCards is list && sd.equipmentCards.size() <= 40));
     }
 
     function isValidCharacterDossier(data) {
@@ -187,9 +189,9 @@ service cloud.firestore {
         && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
         && data.ownerId == request.auth.uid
         && data.gameSystem is string && data.gameSystem.size() <= 40 && data.gameSystem in ['delta-green']
-        && data.category is string && data.category.size() <= 30 && data.category in ['npc', 'location', 'image', 'document']
+        && data.category is string && data.category.size() <= 30 && data.category in ['npc', 'location', 'image', 'document', 'item', 'equipment']
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
-        && data.subtitle is string && data.subtitle.size() <= 300
+        && data.subtitle is string && data.subtitle.size() <= 500
         && data.imageUrl is string && data.imageUrl.size() <= 850000
         && data.publicContent is string && data.publicContent.size() <= 25000
         && data.gmSecretNotes is string && data.gmSecretNotes.size() <= 15000
@@ -279,11 +281,13 @@ service cloud.firestore {
     match /characters/{characterId} {
       allow get: if isSignedIn() && isValidId(characterId) && (
         existing().ownerId == request.auth.uid ||
-        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid)
+        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid) ||
+        ('sessionId' in existing() && existing().sessionId != '')
       );
       allow list: if isSignedIn() && (
         existing().ownerId == request.auth.uid ||
-        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid)
+        ('sessionGmId' in existing() && existing().sessionGmId == request.auth.uid) ||
+        ('sessionId' in existing() && existing().sessionId != '')
       );
 
       allow create: if isVerifiedUser()

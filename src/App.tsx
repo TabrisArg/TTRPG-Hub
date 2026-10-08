@@ -24,8 +24,10 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   AgentCharacter,
   DossierPage,
+  EquippedCardItem,
   GameSession,
   GmAsset,
+  SessionRollEntry,
   SharedSessionItem,
   VisualTheme,
 } from './types/deltaGreen';
@@ -51,6 +53,7 @@ import {
   updateGameSessionByGm,
   joinGameSessionAsPlayer,
   postPlayerTimelineEntryToSession,
+  postPlayerPublicRollToSession,
   deleteGameSession,
   mapFirestoreDocToSession,
   handleFirestoreError,
@@ -469,17 +472,32 @@ export default function App() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
-  // 5. Subscribe to all Player Characters assigned to the active GM Session
+  const activeAgent = agents.find((a) => a.id === activeAgentId) || agents[0] || null;
+  const activeGmSession =
+    hostedSessions.find((s) => s.id === activeSessionId) ||
+    invitedSessions.find((s) => s.id === activeSessionId) ||
+    null;
+
+  // Find if the active character is linked to any live session (invited or hosted)
+  const linkedPlayerSession = activeAgent?.sessionId
+    ? invitedSessions.find((s) => s.id === activeAgent.sessionId) ||
+      hostedSessions.find((s) => s.id === activeAgent.sessionId) ||
+      null
+    : null;
+
+  const targetSessionForCharacters =
+    activeSessionId || linkedPlayerSession?.id || '';
+
+  // 5. Subscribe to all Player Characters assigned to the active Session (for GM and players to view Character Cards & Read-Only Profiles)
   useEffect(() => {
-    if (authLoading || !user || !activeSessionId) {
+    if (authLoading || !user || !targetSessionForCharacters) {
       setSessionCharacters([]);
       return;
     }
 
     const q = query(
       collection(db, 'characters'),
-      where('sessionGmId', '==', user.uid),
-      where('sessionId', '==', activeSessionId)
+      where('sessionId', '==', targetSessionForCharacters)
     );
 
     const unsubscribe = onSnapshot(
@@ -497,28 +515,25 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, [user, authLoading, activeSessionId]);
+  }, [user, authLoading, targetSessionForCharacters]);
 
-  const activeAgent = agents.find((a) => a.id === activeAgentId) || agents[0] || null;
-  const activeGmSession =
-    hostedSessions.find((s) => s.id === activeSessionId) || null;
-
-  // Find if the active character is linked to any live session (invited or hosted)
-  const linkedPlayerSession = activeAgent?.sessionId
-    ? invitedSessions.find((s) => s.id === activeAgent.sessionId) ||
-      hostedSessions.find((s) => s.id === activeAgent.sessionId) ||
-      null
-    : null;
-
-  // Update active agent locally and sync directly to Firestore
-  const updateActiveAgent = (updater: (prev: AgentCharacter) => AgentCharacter) => {
-    if (!user || !activeAgent) return;
+  // Update any owned character by ID and sync directly to Firestore
+  const handleUpdateOwnCharacterById = (
+    characterId: string,
+    updater: (prev: AgentCharacter) => AgentCharacter
+  ) => {
+    if (!user) return;
 
     setAgents((prevList) => {
+      const target = prevList.find((item) => item.id === characterId);
+      if (!target || (target.ownerId && target.ownerId !== user.uid)) {
+        return prevList;
+      }
+
       const nextList = prevList.map((item) =>
-        item.id === activeAgent.id ? updater(item) : item
+        item.id === characterId ? updater(item) : item
       );
-      const updatedTarget = nextList.find((item) => item.id === activeAgent.id);
+      const updatedTarget = nextList.find((item) => item.id === characterId);
 
       if (updatedTarget) {
         if (saveTimeoutRef.current) {
@@ -540,6 +555,38 @@ export default function App() {
 
       return nextList;
     });
+  };
+
+  // Update active agent locally and sync directly to Firestore
+  const updateActiveAgent = (updater: (prev: AgentCharacter) => AgentCharacter) => {
+    if (!user || !activeAgent) return;
+    handleUpdateOwnCharacterById(activeAgent.id, updater);
+  };
+
+  // Add an Item Card or Equipment Card to the player's active character's Gear section
+  const handleAddCardToCharacterEquipment = (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => {
+    if (!user || !activeAgent) return;
+    const newEquippedCard: EquippedCardItem = {
+      id: `eq-card-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      category: card.category,
+      name: card.name,
+      imageUrl: card.imageUrl || '',
+      description: card.description || '',
+      effect: card.category === 'equipment' ? card.effect || '' : '',
+      addedAt: new Date().toLocaleDateString(),
+    };
+
+    handleUpdateOwnCharacterById(activeAgent.id, (prev) => ({
+      ...prev,
+      updatedAt: new Date().toISOString(),
+      equipmentCards: [...(prev.equipmentCards || []), newEquippedCard],
+    }));
   };
 
   const handleManualCloudSave = async () => {
@@ -898,7 +945,7 @@ export default function App() {
     );
   };
 
-  const handleJoinInvitedSession = async (
+  const handleSelectCharacterForSession = async (
     session: GameSession,
     characterId: string
   ) => {
@@ -908,7 +955,23 @@ export default function App() {
 
     setIsSyncing(true);
     try {
-      // 1. Update the character with sessionId and sessionGmId so the GM can inspect it live
+      // Unlink any other character owned by this user that was linked to this session
+      const previouslyLinked = agents.filter(
+        (a) => a.id !== targetChar.id && a.sessionId === session.id
+      );
+      for (const prevChar of previouslyLinked) {
+        await updateCloudCharacter(
+          {
+            ...prevChar,
+            sessionId: '',
+            sessionGmId: '',
+          },
+          user.uid,
+          user.displayName || user.email || 'Operative'
+        );
+      }
+
+      // 1. Update the chosen character with sessionId and sessionGmId
       const updatedChar: AgentCharacter = {
         ...targetChar,
         sessionId: session.id,
@@ -930,7 +993,34 @@ export default function App() {
       });
 
       setActiveAgentId(targetChar.id);
-      setViewMode('delta-green');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleJoinInvitedSession = async (
+    session: GameSession,
+    characterId: string
+  ) => {
+    await handleSelectCharacterForSession(session, characterId);
+    setViewMode('delta-green');
+  };
+
+  const handlePostPublicRollToSession = async (
+    session: GameSession,
+    roll: SessionRollEntry
+  ) => {
+    if (!user) return;
+    setIsSyncing(true);
+    try {
+      if (session.gmId === user.uid) {
+        await updateGameSessionByGm({
+          ...session,
+          publicRolls: [roll, ...(session.publicRolls || [])].slice(0, 50),
+        });
+      } else {
+        await postPlayerPublicRollToSession(session, roll);
+      }
     } finally {
       setIsSyncing(false);
     }
@@ -979,6 +1069,13 @@ export default function App() {
           onChangeTheme={setVisualTheme}
           session={activeGmSession}
           sessionCharacters={sessionCharacters}
+          playerCharacters={agents}
+          activeCharacterId={activeAgent?.id || ''}
+          onSelectCharacterForSession={(charId) =>
+            handleSelectCharacterForSession(activeGmSession, charId)
+          }
+          onUpdateOwnCharacter={handleUpdateOwnCharacterById}
+          onAddToCharacterEquipment={handleAddCardToCharacterEquipment}
           gmAssets={gmAssets}
           onUpdateSession={handleUpdateGmSession}
           onCreateGmAsset={handleCreateGmAsset}
@@ -1029,6 +1126,7 @@ export default function App() {
           activeGmSession={activeGmSession || hostedSessions[0] || null}
           onShareAssetToActiveSession={handleShareAssetToActiveSession}
           onRestoreStarterAssets={handleRestoreStarterAssets}
+          onAddToCharacterEquipment={handleAddCardToCharacterEquipment}
           isSyncing={isSyncing}
         />
       </>
@@ -1236,12 +1334,24 @@ export default function App() {
         {linkedPlayerSession && (
           <PlayerSessionOverlayBar
             session={linkedPlayerSession}
+            currentUserId={user.uid}
             currentUserName={
               activeAgent.fullNameAndAlias ||
               user.displayName ||
               user.email ||
               'Agent'
             }
+            playerCharacters={agents}
+            activeCharacterId={activeAgent.id}
+            sessionCharacters={sessionCharacters}
+            onSelectCharacterForSession={(charId) =>
+              handleSelectCharacterForSession(linkedPlayerSession, charId)
+            }
+            onUpdateOwnCharacter={handleUpdateOwnCharacterById}
+            onPostPublicRoll={(roll) =>
+              handlePostPublicRollToSession(linkedPlayerSession, roll)
+            }
+            onAddToCharacterEquipment={handleAddCardToCharacterEquipment}
             returnLabel={`Return to Character Sheet (${
               activeAgent.fullNameAndAlias?.split('//')[0].trim() || 'Agent'
             })`}

@@ -21,6 +21,8 @@ import {
   Radio,
   Zap,
   ZoomIn,
+  UserSquare2,
+  Edit3,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -54,6 +56,7 @@ import { ApplicableSkillSetsSection } from './ApplicableSkillSetsSection';
 import { InjuriesAndEquipmentSection } from './InjuriesAndEquipmentSection';
 import { RemarksSection } from './RemarksSection';
 import { CampaignDateTimePicker } from './CampaignDateTimePicker';
+import { CharacterProfileModal } from './CharacterProfileModal';
 
 interface GmSessionScreenProps {
   user: User;
@@ -61,6 +64,20 @@ interface GmSessionScreenProps {
   onChangeTheme: (theme: VisualTheme) => void;
   session: GameSession;
   sessionCharacters: AgentCharacter[];
+  playerCharacters?: AgentCharacter[];
+  activeCharacterId?: string;
+  onSelectCharacterForSession?: (characterId: string) => Promise<void> | void;
+  onUpdateOwnCharacter?: (
+    characterId: string,
+    updater: (prev: AgentCharacter) => AgentCharacter
+  ) => void;
+  onAddToCharacterEquipment?: (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => Promise<void> | void;
   gmAssets: GmAsset[];
   onUpdateSession: (updated: GameSession) => Promise<void>;
   onCreateGmAsset: (
@@ -214,6 +231,11 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
   onChangeTheme,
   session,
   sessionCharacters,
+  playerCharacters = [],
+  activeCharacterId = '',
+  onSelectCharacterForSession,
+  onUpdateOwnCharacter,
+  onAddToCharacterEquipment,
   gmAssets,
   onUpdateSession,
   onCreateGmAsset,
@@ -264,8 +286,148 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
   const [newClockName, setNewClockName] = useState('');
   const [newClockSegments, setNewClockSegments] = useState(6);
 
+  const allKnownCharacters: AgentCharacter[] = [
+    ...sessionCharacters,
+    ...playerCharacters.filter(
+      (pc) => !sessionCharacters.some((sc) => sc.id === pc.id)
+    ),
+  ];
+
+  const myJoinedEntry = (session.joinedPlayers || []).find(
+    (jp) => jp.uid === user.uid
+  );
+
+  const selectedCharId =
+    myJoinedEntry?.characterId ||
+    activeCharacterId ||
+    playerCharacters[0]?.id ||
+    '';
+
+  const myPlayingCharacter =
+    allKnownCharacters.find((c) => c.id === selectedCharId) ||
+    playerCharacters[0] ||
+    null;
+
   const inspectedAgent =
-    sessionCharacters.find((c) => c.id === inspectedAgentId) || null;
+    allKnownCharacters.find((c) => c.id === inspectedAgentId) || null;
+
+  const resolveRollCharacterCard = (r: SessionRollEntry) => {
+    const byId = r.characterId
+      ? allKnownCharacters.find((c) => c.id === r.characterId)
+      : undefined;
+    if (byId) {
+      return {
+        characterId: byId.id,
+        name: byId.fullNameAndAlias || 'Unnamed Agent',
+        portraitUrl: byId.portraitUrl || r.characterPortraitUrl || '',
+        profession: byId.professionAndRank || 'Unassigned Profession',
+        ownerId: byId.ownerId,
+        hasFullProfile: true,
+      };
+    }
+
+    const joined = (session.joinedPlayers || []).find(
+      (jp) =>
+        (r.characterId && jp.characterId === r.characterId) ||
+        (r.rollerUid && jp.uid === r.rollerUid) ||
+        (r.rollerName &&
+          (jp.characterName.toLowerCase() === r.rollerName.toLowerCase() ||
+            jp.name.toLowerCase() === r.rollerName.toLowerCase()))
+    );
+
+    if (joined) {
+      const linkedChar = allKnownCharacters.find(
+        (c) => c.id === joined.characterId
+      );
+      return {
+        characterId: joined.characterId,
+        name:
+          linkedChar?.fullNameAndAlias ||
+          joined.characterName ||
+          r.characterName ||
+          joined.name,
+        portraitUrl:
+          linkedChar?.portraitUrl ||
+          joined.characterPortraitUrl ||
+          r.characterPortraitUrl ||
+          '',
+        profession:
+          linkedChar?.professionAndRank ||
+          joined.characterProfession ||
+          r.characterProfession ||
+          'Agent',
+        ownerId: linkedChar?.ownerId || joined.uid,
+        hasFullProfile: Boolean(linkedChar),
+      };
+    }
+
+    if (r.characterName) {
+      return {
+        characterId: r.characterId || '',
+        name: r.characterName,
+        portraitUrl: r.characterPortraitUrl || '',
+        profession: r.characterProfession || 'Operative',
+        ownerId: r.rollerUid,
+        hasFullProfile: false,
+      };
+    }
+
+    return null;
+  };
+
+  const renderRollCharacterCardBox = (card: {
+    characterId: string;
+    name: string;
+    portraitUrl: string;
+    profession: string;
+    ownerId?: string;
+    hasFullProfile: boolean;
+  }) => {
+    const isMine = Boolean(card.ownerId && card.ownerId === user.uid);
+    return (
+      <div className="bg-[#121715] border border-[#16A34A]/60 rounded p-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-9 h-11 rounded bg-[#0B0E0D] border border-[#232B28] overflow-hidden shrink-0 flex items-center justify-center">
+            {card.portraitUrl ? (
+              <img
+                src={card.portraitUrl}
+                alt={card.name}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <UserSquare2 size={16} className="text-[#525C58]" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="font-mono-tabular text-[9px] uppercase text-[#4ADE80] font-semibold">
+              CHARACTER CARD · {isMine ? 'OWNER' : 'READ-ONLY'}
+            </div>
+            <div className="font-display text-xs font-bold text-[#E2E6E4] truncate">
+              {card.name}
+            </div>
+            <div className="text-[10px] text-[#8C9692] truncate">
+              {card.profession || 'Unassigned Profession / Rank'}
+            </div>
+          </div>
+        </div>
+
+        {card.characterId && card.hasFullProfile && (
+          <button
+            type="button"
+            onClick={() => {
+              setInspectedAgentId(card.characterId);
+              setInspectPage('personal');
+            }}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#0B0E0D] hover:bg-[#19201E] border border-[#16A34A] text-[10px] font-mono-tabular font-semibold text-[#4ADE80] cursor-pointer shrink-0"
+          >
+            {isMine ? <Edit3 size={10} /> : <FolderOpen size={10} />}
+            <span>{isMine ? 'Edit Profile' : 'Full Profile'}</span>
+          </button>
+        )}
+      </div>
+    );
+  };
 
   // 1. Invite Player by Gmail
   const handleAddInviteEmail = async (e: React.FormEvent) => {
@@ -290,17 +452,33 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
     });
   };
 
-  // 2. Roll Dice (Public or Private GM Roll)
+  // 2. Roll Dice (Public or Private GM Roll, or Player Roll in Player Mode)
   const handleExecuteRoll = async (formula: string, defaultLabel?: string) => {
     const { total, details } = rollDiceFormula(formula);
+    const usePlayerChar = Boolean(isPlayerMode && myPlayingCharacter);
+    const rollerDisplayName = usePlayerChar
+      ? myPlayingCharacter?.fullNameAndAlias || user.displayName || 'Player'
+      : `GM (${user.displayName || 'Handler'})`;
+
     const entry: SessionRollEntry = {
       id: `roll-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      rollerName: `GM (${user.displayName || 'Handler'})`,
+      rollerName: rollerDisplayName,
+      rollerUid: user.uid,
+      characterId: usePlayerChar ? myPlayingCharacter?.id : undefined,
+      characterName: usePlayerChar
+        ? myPlayingCharacter?.fullNameAndAlias || 'Unnamed Agent'
+        : undefined,
+      characterPortraitUrl: usePlayerChar
+        ? myPlayingCharacter?.portraitUrl || ''
+        : undefined,
+      characterProfession: usePlayerChar
+        ? myPlayingCharacter?.professionAndRank || 'Unassigned Profession'
+        : undefined,
       label: rollLabel.trim() || defaultLabel || `${formula} Roll`,
       formula,
       result: total,
       details,
-      isPrivate: rollIsPrivate,
+      isPrivate: isPlayerMode ? false : rollIsPrivate,
       timestamp: new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
@@ -519,6 +697,8 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
     }
     if (qcCategory === 'npc') return 'Unnamed NPC';
     if (qcCategory === 'location') return 'Unnamed Location';
+    if (qcCategory === 'item') return 'Unnamed Item';
+    if (qcCategory === 'equipment') return 'Unnamed Equipment';
     return 'Archive Image';
   };
 
@@ -535,10 +715,11 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
     const draft = {
       category: qcCategory,
       title: resolvedTitle,
-      subtitle: qcSubtitle.trim(),
+      subtitle: qcCategory === 'item' ? '' : qcSubtitle.trim(),
       imageUrl: qcImageUrl.trim(),
       publicContent: qcContent,
-      gmSecretNotes: qcSecret,
+      gmSecretNotes:
+        qcCategory === 'item' || qcCategory === 'equipment' ? '' : qcSecret,
       docStyle: qcCategory === 'document' ? qcDocStyle : ('' as const),
       docFont: qcCategory === 'document' ? qcDocFont : ('' as const),
       docSignature: qcCategory === 'document' ? qcSignature.trim() : '',
@@ -814,7 +995,25 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
             {/* Exact Live Player Session Overlay Bar shown on Player Character Sheets */}
             <PlayerSessionOverlayBar
               session={session}
-              currentUserName={user.displayName || user.email || 'Player'}
+              currentUserId={user.uid}
+              currentUserName={
+                myPlayingCharacter?.fullNameAndAlias ||
+                user.displayName ||
+                user.email ||
+                'Player'
+              }
+              playerCharacters={playerCharacters}
+              activeCharacterId={selectedCharId}
+              sessionCharacters={allKnownCharacters}
+              onSelectCharacterForSession={onSelectCharacterForSession}
+              onUpdateOwnCharacter={onUpdateOwnCharacter}
+              onPostPublicRoll={async (roll) => {
+                await onUpdateSession({
+                  ...session,
+                  publicRolls: [roll, ...(session.publicRolls || [])].slice(0, 50),
+                });
+              }}
+              onAddToCharacterEquipment={onAddToCharacterEquipment}
               returnLabel="Return to Player Mode Preview"
               onPostTimelineEntry={handlePostTimelineEntry}
               onSaveToGmLibrary={onCreateGmAsset}
@@ -826,11 +1025,21 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
               <div className="lg:col-span-8">
                 <SessionMessageBoard
                   session={session}
-                  currentUserName={user.displayName || user.email || 'Player (Test)'}
+                  currentUserName={
+                    myPlayingCharacter?.fullNameAndAlias ||
+                    user.displayName ||
+                    user.email ||
+                    'Player (Test)'
+                  }
                   isGm={true}
                   isPlayerMode={true}
                   onPostTimelineEntry={handlePostTimelineEntry}
                   onSaveToGmLibrary={onCreateGmAsset}
+                  onAddToCharacterEquipment={onAddToCharacterEquipment}
+                  equipTargetLabel={
+                    myPlayingCharacter?.fullNameAndAlias?.split('//')[0].trim() ||
+                    'My Agent'
+                  }
                 />
               </div>
 
@@ -838,6 +1047,48 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
               <div className="lg:col-span-4 space-y-4">
                 {/* Public Dice Log */}
                 <div className="border border-[#232B28] bg-[#121715] p-4 space-y-3">
+                  {/* Character Selector Dropdown & Active Character Card Over Public Table Rolls */}
+                  {playerCharacters.length > 0 && onSelectCharacterForSession && (
+                    <div className="space-y-1.5 pb-3 border-b border-[#232B28]">
+                      <label className="block font-mono-tabular text-[10px] font-semibold text-[#4ADE80] uppercase">
+                        SPECIFY CHARACTER PLAYING IN THIS SESSION
+                      </label>
+                      <select
+                        value={selectedCharId}
+                        onChange={(e) =>
+                          onSelectCharacterForSession(e.target.value)
+                        }
+                        className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-2.5 py-1.5 text-xs text-[#E2E6E4] focus:outline-none cursor-pointer"
+                      >
+                        {playerCharacters.map((pc) => (
+                          <option key={pc.id} value={pc.id}>
+                            {pc.fullNameAndAlias || 'Unnamed Agent'} —{' '}
+                            {pc.professionAndRank || 'Unassigned Profession'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {myPlayingCharacter && (
+                    <div className="space-y-1.5 pb-2 border-b border-[#232B28]">
+                      <div className="font-mono-tabular text-[10px] text-[#8C9692] uppercase">
+                        YOUR ACTIVE CHARACTER CARD
+                      </div>
+                      {renderRollCharacterCardBox({
+                        characterId: myPlayingCharacter.id,
+                        name:
+                          myPlayingCharacter.fullNameAndAlias || 'Unnamed Agent',
+                        portraitUrl: myPlayingCharacter.portraitUrl || '',
+                        profession:
+                          myPlayingCharacter.professionAndRank ||
+                          'Unassigned Profession',
+                        ownerId: myPlayingCharacter.ownerId || user.uid,
+                        hasFullProfile: true,
+                      })}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between border-b border-[#232B28] pb-2">
                     <span className="inline-flex items-center gap-1.5 font-mono-tabular text-xs font-semibold text-[#4ADE80]">
                       <Dices size={14} />
@@ -852,33 +1103,39 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                     </button>
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto space-y-1.5">
+                  <div className="max-h-72 overflow-y-auto space-y-2">
                     {session.publicRolls.length === 0 ? (
                       <div className="text-xs text-[#68736E] py-3 text-center">
                         No public dice rolls yet. Private GM rolls are hidden from players.
                       </div>
                     ) : (
-                      session.publicRolls.map((r) => (
-                        <div
-                          key={r.id}
-                          className="bg-[#0B0E0D] border border-[#232B28] rounded px-3 py-2 flex items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="min-w-0">
-                            <div className="font-semibold text-[#E2E6E4] truncate">
-                              {r.label}{' '}
-                              <span className="text-[10px] text-[#8C9692]">
-                                ({r.rollerName})
+                      session.publicRolls.map((r) => {
+                        const card = resolveRollCharacterCard(r);
+                        return (
+                          <div
+                            key={r.id}
+                            className="bg-[#0B0E0D] border border-[#232B28] rounded p-2.5 space-y-2 text-xs"
+                          >
+                            {card && renderRollCharacterCardBox(card)}
+                            <div className="flex items-center justify-between gap-2 px-1">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-[#E2E6E4] truncate">
+                                  {r.label}{' '}
+                                  <span className="text-[10px] text-[#8C9692]">
+                                    ({r.rollerName})
+                                  </span>
+                                </div>
+                                <div className="font-mono-tabular text-[10px] text-[#68736E]">
+                                  {r.details} · {r.timestamp}
+                                </div>
+                              </div>
+                              <span className="font-mono-tabular text-sm font-bold text-[#4ADE80] shrink-0">
+                                {r.result}
                               </span>
                             </div>
-                            <div className="font-mono-tabular text-[10px] text-[#68736E]">
-                              {r.details} · {r.timestamp}
-                            </div>
                           </div>
-                          <span className="font-mono-tabular text-sm font-bold text-[#4ADE80] shrink-0">
-                            {r.result}
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -1322,6 +1579,11 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                 onApplyTimeSkip={handleApplyTimeSkip}
                 onReturnToPresent={handleReturnToPresent}
                 onSaveToGmLibrary={onCreateGmAsset}
+                onAddToCharacterEquipment={onAddToCharacterEquipment}
+                equipTargetLabel={
+                  myPlayingCharacter?.fullNameAndAlias?.split('//')[0].trim() ||
+                  'My Agent'
+                }
                 onOpenGmDatabaseTab={() => setActiveTab('gm-database')}
                 onOpenQuickCreateTab={() => setActiveTab('quick-create')}
               />
@@ -1489,33 +1751,39 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                       </button>
                     )}
                   </div>
-                  <div className="max-h-56 overflow-y-auto space-y-1.5">
+                  <div className="max-h-72 overflow-y-auto space-y-2">
                     {session.publicRolls.length === 0 ? (
                       <div className="text-[11px] text-[#68736E] py-2">
                         No public rolls yet.
                       </div>
                     ) : (
-                      session.publicRolls.map((r) => (
-                        <div
-                          key={r.id}
-                          className="bg-[#0B0E0D] border border-[#232B28] rounded px-2.5 py-1.5 flex items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="min-w-0">
-                            <div className="font-semibold text-[#E2E6E4] truncate">
-                              {r.label}{' '}
-                              <span className="text-[10px] text-[#4ADE80] font-normal">
-                                ({r.rollerName})
+                      session.publicRolls.map((r) => {
+                        const card = resolveRollCharacterCard(r);
+                        return (
+                          <div
+                            key={r.id}
+                            className="bg-[#0B0E0D] border border-[#232B28] rounded p-2.5 space-y-2 text-xs"
+                          >
+                            {card && renderRollCharacterCardBox(card)}
+                            <div className="flex items-center justify-between gap-2 px-1">
+                              <div className="min-w-0">
+                                <div className="font-semibold text-[#E2E6E4] truncate">
+                                  {r.label}{' '}
+                                  <span className="text-[10px] text-[#4ADE80] font-normal">
+                                    ({r.rollerName})
+                                  </span>
+                                </div>
+                                <div className="font-mono-tabular text-[10px] text-[#8C9692]">
+                                  {r.details} · {r.timestamp}
+                                </div>
+                              </div>
+                              <span className="font-mono-tabular text-base font-bold text-[#4ADE80] shrink-0">
+                                {r.result}
                               </span>
                             </div>
-                            <div className="font-mono-tabular text-[10px] text-[#8C9692]">
-                              {r.details} · {r.timestamp}
-                            </div>
                           </div>
-                          <span className="font-mono-tabular text-base font-bold text-[#4ADE80] shrink-0">
-                            {r.result}
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -1550,22 +1818,29 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
                   <span>Return to Live Session Table ({session.title})</span>
                 </button>
 
-                {(['document', 'npc', 'location', 'image'] as GmAssetCategory[]).map(
-                  (cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setQcCategory(cat)}
-                      className={`px-3 py-1.5 rounded text-xs font-mono-tabular uppercase cursor-pointer ${
-                        qcCategory === cat
-                          ? 'bg-[#16A34A] text-white font-semibold'
-                          : 'bg-[#0B0E0D] text-[#A5B0AC] border border-[#232B28]'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  )
-                )}
+                {(
+                  [
+                    'document',
+                    'npc',
+                    'location',
+                    'item',
+                    'equipment',
+                    'image',
+                  ] as GmAssetCategory[]
+                ).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setQcCategory(cat)}
+                    className={`px-3 py-1.5 rounded text-xs font-mono-tabular uppercase cursor-pointer ${
+                      qcCategory === cat
+                        ? 'bg-[#16A34A] text-white font-semibold'
+                        : 'bg-[#0B0E0D] text-[#A5B0AC] border border-[#232B28]'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -1582,29 +1857,53 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
 
                 <div>
                   <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                    TITLE / NAME (AUTO-FILLED IF LEFT BLANK)
+                    {qcCategory === 'item'
+                      ? 'ITEM NAME (AUTO-FILLED IF LEFT BLANK)'
+                      : qcCategory === 'equipment'
+                      ? 'EQUIPMENT NAME (AUTO-FILLED IF LEFT BLANK)'
+                      : 'TITLE / NAME (AUTO-FILLED IF LEFT BLANK)'}
                   </label>
                   <input
                     type="text"
                     value={qcTitle}
                     onChange={(e) => setQcTitle(e.target.value)}
-                    placeholder="e.g., Stained Motel Note / Deputy Sheriff Miller..."
+                    placeholder={
+                      qcCategory === 'item'
+                        ? 'e.g., Green Box Keycard #44, Obsidian Amulet...'
+                        : qcCategory === 'equipment'
+                        ? 'e.g., AN/PVS-14 Night Vision Goggles, Tactical Vest...'
+                        : 'e.g., Stained Motel Note / Deputy Sheriff Miller...'
+                    }
                     className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-2 text-sm text-[#E2E6E4] focus:outline-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block font-mono-tabular text-[11px] text-[#8C9692] mb-1">
-                    SUBTITLE / ROLE / CLASSIFICATION / COORDINATES
-                  </label>
-                  <input
-                    type="text"
-                    value={qcSubtitle}
-                    onChange={(e) => setQcSubtitle(e.target.value)}
-                    placeholder="Optional subtitle or stamp..."
-                    className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
-                  />
-                </div>
+                {qcCategory !== 'item' && (
+                  <div>
+                    <label
+                      className={`block font-mono-tabular text-[11px] mb-1 ${
+                        qcCategory === 'equipment'
+                          ? 'text-[#4ADE80] font-semibold'
+                          : 'text-[#8C9692]'
+                      }`}
+                    >
+                      {qcCategory === 'equipment'
+                        ? 'EQUIPMENT EFFECT / MECHANICAL BONUS'
+                        : 'SUBTITLE / ROLE / CLASSIFICATION / COORDINATES'}
+                    </label>
+                    <input
+                      type="text"
+                      value={qcSubtitle}
+                      onChange={(e) => setQcSubtitle(e.target.value)}
+                      placeholder={
+                        qcCategory === 'equipment'
+                          ? 'e.g., +20% Alertness in darkness, Armor +3 vs ballistic...'
+                          : 'Optional subtitle or stamp...'
+                      }
+                      className="w-full bg-[#0B0E0D] border border-[#232B28] focus:border-[#16A34A] rounded px-3 py-1.5 text-xs text-[#E2E6E4] focus:outline-none"
+                    />
+                  </div>
+                )}
 
                 {qcCategory === 'document' ? (
                   <div className="bg-[#0B0E0D] border border-[#232B28] p-3.5 rounded space-y-3">
@@ -1781,6 +2080,11 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
             onReturnToSession={() => setActiveTab('overview')}
             returnToSessionLabel={`Return to Live Session Table (${session.title})`}
             onRestoreStarterAssets={onRestoreStarterAssets}
+            onAddToCharacterEquipment={onAddToCharacterEquipment}
+            equipTargetLabel={
+              myPlayingCharacter?.fullNameAndAlias?.split('//')[0].trim() ||
+              'My Agent'
+            }
             hasActiveSession={true}
             isSyncing={isSyncing}
           />
@@ -2116,86 +2420,19 @@ export const GmSessionScreen: React.FC<GmSessionScreenProps> = ({
         )}
       </main>
 
-      {/* Full 5-Page Player Character Dossier Inspector Modal */}
+      {/* Full 5-Page Player Character Dossier Inspector Modal (Editable for Owner, Read-Only for Others) */}
       {inspectedAgent && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col overflow-y-auto p-3 sm:p-6">
-          <div className="max-w-[1320px] w-full mx-auto bg-[#0B0E0D] border-2 border-[#16A34A] rounded p-4 sm:p-6 space-y-4 my-auto">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#232B28] pb-3">
-              <div>
-                <div className="font-mono-tabular text-xs text-[#4ADE80]">
-                  GM LIVE DOSSIER INSPECTION · PLAYER: {inspectedAgent.ownerName}
-                </div>
-                <h2 className="font-display text-xl font-bold text-[#E2E6E4]">
-                  {inspectedAgent.fullNameAndAlias || 'UNNAMED AGENT'}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {(
-                  [
-                    { id: 'personal', label: '01. Personal' },
-                    { id: 'stats-psych', label: '02. Stats & Psyche' },
-                    { id: 'skills', label: '03. Skill Sets' },
-                    { id: 'injuries-equipment', label: '04. Injuries & Gear' },
-                    { id: 'remarks', label: '05. Remarks' },
-                  ] as const
-                ).map((pg) => (
-                  <button
-                    key={pg.id}
-                    type="button"
-                    onClick={() => setInspectPage(pg.id)}
-                    className={`px-3 py-1.5 rounded text-xs font-mono-tabular cursor-pointer ${
-                      inspectPage === pg.id
-                        ? 'bg-[#16A34A] text-white font-semibold'
-                        : 'bg-[#121715] text-[#A5B0AC] border border-[#232B28]'
-                    }`}
-                  >
-                    {pg.label}
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() => setInspectedAgentId(null)}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
-                >
-                  <X size={14} />
-                  <span>Return to GM Command Console ({session.title})</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="pointer-events-none opacity-95">
-              {inspectPage === 'personal' && (
-                <PersonalDataSection agent={inspectedAgent} onUpdate={() => {}} />
-              )}
-              {inspectPage === 'stats-psych' && (
-                <StatisticalAndPsychSection
-                  agent={inspectedAgent}
-                  onUpdate={() => {}}
-                  onResetBreakingPoint={() => {}}
-                />
-              )}
-              {inspectPage === 'skills' && (
-                <ApplicableSkillSetsSection
-                  agent={inspectedAgent}
-                  onUpdate={() => {}}
-                  onSessionAdvancePlusOne={() => {}}
-                  onClearAllSkillChecks={() => {}}
-                />
-              )}
-              {inspectPage === 'injuries-equipment' && (
-                <InjuriesAndEquipmentSection
-                  agent={inspectedAgent}
-                  onUpdate={() => {}}
-                />
-              )}
-              {inspectPage === 'remarks' && (
-                <RemarksSection agent={inspectedAgent} onUpdate={() => {}} />
-              )}
-            </div>
-          </div>
-        </div>
+        <CharacterProfileModal
+          character={inspectedAgent}
+          currentUserId={user.uid}
+          onUpdateCharacter={
+            inspectedAgent.ownerId === user.uid && onUpdateOwnCharacter
+              ? (updater) => onUpdateOwnCharacter(inspectedAgent.id, updater)
+              : undefined
+          }
+          onClose={() => setInspectedAgentId(null)}
+          returnLabel={`Return to GM Command Console (${session.title})`}
+        />
       )}
     </div>
   );

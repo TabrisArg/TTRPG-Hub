@@ -10,6 +10,10 @@ import {
   ZoomIn,
   PenTool,
   FolderPlus,
+  Package,
+  Shield,
+  Check,
+  Plus,
 } from 'lucide-react';
 import {
   DocumentFontStyle,
@@ -156,6 +160,14 @@ interface StyledHandoutRendererProps {
   onSaveToGmLibrary?: (
     draft: Omit<GmAsset, 'id' | 'ownerId' | 'gameSystem' | 'updatedAt'>
   ) => Promise<string | void>;
+  onAddToCharacterEquipment?: (card: {
+    category: 'item' | 'equipment';
+    name: string;
+    imageUrl: string;
+    description: string;
+    effect?: string;
+  }) => Promise<void> | void;
+  equipTargetLabel?: string;
 }
 
 export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
@@ -172,9 +184,12 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
   compact = false,
   onShareScribbleToTimeline,
   onSaveToGmLibrary,
+  onAddToCharacterEquipment,
+  equipTargetLabel,
 }) => {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [showAddToLibrary, setShowAddToLibrary] = useState(false);
+  const [addedToGear, setAddedToGear] = useState(false);
 
   const activeDocStyle: DocumentVisualStyle =
     (docStyle as DocumentVisualStyle) || 'official-document';
@@ -999,7 +1014,22 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
     );
   }
 
-  // Render NPC, Location, or Archive Image Card
+  // Render NPC, Location, Archive Image, Item Card, or Equipment Card
+  const isEquipableCard = category === 'item' || category === 'equipment';
+
+  const handleEquipClick = async () => {
+    if (!onAddToCharacterEquipment || !isEquipableCard) return;
+    await onAddToCharacterEquipment({
+      category,
+      name: title || (category === 'equipment' ? 'Equipment' : 'Item'),
+      imageUrl: imageUrl || '',
+      description: publicContent || '',
+      effect: category === 'equipment' ? subtitle : '',
+    });
+    setAddedToGear(true);
+    window.setTimeout(() => setAddedToGear(false), 2000);
+  };
+
   return (
     <div className="border border-[#232B28] bg-[#0B0E0D] rounded overflow-hidden">
       {isZoomOpen && imageUrl && (
@@ -1012,6 +1042,10 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
               ? 'NPC Card'
               : category === 'location'
               ? 'Location Card'
+              : category === 'item'
+              ? 'Item Card'
+              : category === 'equipment'
+              ? 'Equipment Card'
               : 'Image Card'
           }`}
           onShareScribbleToTimeline={onShareScribbleToTimeline}
@@ -1019,10 +1053,13 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
           onClose={() => setIsZoomOpen(false)}
         />
       )}
-      {showAddToLibrary && imageUrl && onSaveToGmLibrary && (
+      {showAddToLibrary && onSaveToGmLibrary && (
         <AddToGmLibraryModal
           imageUrl={imageUrl}
           defaultTitle={title}
+          defaultCategory={category}
+          defaultSubtitle={subtitle}
+          defaultPublicContent={publicContent}
           onSaveToGmLibrary={onSaveToGmLibrary}
           onClose={() => setShowAddToLibrary(false)}
         />
@@ -1038,6 +1075,8 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
               className={`group relative ${
                 category === 'npc'
                   ? 'w-28 h-36 sm:w-36 sm:h-44'
+                  : category === 'item' || category === 'equipment'
+                  ? 'w-32 h-32 sm:w-40 sm:h-40'
                   : 'w-full sm:w-56 h-44'
               } bg-[#121715] border border-[#232B28] hover:border-[#16A34A] rounded overflow-hidden flex items-center justify-center cursor-zoom-in`}
             >
@@ -1078,55 +1117,103 @@ export const StyledHandoutRenderer: React.FC<StyledHandoutRendererProps> = ({
         ) : (
           <div
             className={`${
-              category === 'npc' ? 'w-24 h-32' : 'w-32 h-28'
+              category === 'npc' ? 'w-24 h-32' : 'w-28 h-28'
             } bg-[#121715] border border-[#232B28] rounded shrink-0 flex flex-col items-center justify-center text-[#68736E]`}
           >
             {category === 'npc' && <UserSquare2 size={28} />}
             {category === 'location' && <MapPin size={28} />}
             {category === 'image' && <ImageIcon size={28} />}
+            {category === 'item' && <Package size={28} />}
+            {category === 'equipment' && <Shield size={28} />}
             <span className="font-mono-tabular text-[10px] mt-1 uppercase">
               {category}
             </span>
           </div>
         )}
 
-        <div className="flex-1 min-w-0 space-y-2">
-          <div>
-            <div className="inline-flex items-center gap-1.5 font-mono-tabular text-[10px] uppercase text-[#4ADE80]">
-              {category === 'npc' && <UserSquare2 size={12} />}
-              {category === 'location' && <MapPin size={12} />}
-              {category === 'image' && <ImageIcon size={12} />}
-              <span>
-                {category === 'npc'
-                  ? 'NPC DOSSIER CARD'
-                  : category === 'location'
-                  ? 'LOCATION RECONNAISSANCE'
-                  : 'ARCHIVE EVIDENCE IMAGE'}
-              </span>
-              {subtitle && (
-                <>
-                  <span>·</span>
-                  <span className="text-[#8C9692]">{subtitle}</span>
-                </>
-              )}
+        <div className="flex-1 min-w-0 space-y-2.5 flex flex-col justify-between">
+          <div className="space-y-2">
+            <div>
+              <div className="inline-flex items-center gap-1.5 font-mono-tabular text-[10px] uppercase text-[#4ADE80]">
+                {category === 'npc' && <UserSquare2 size={12} />}
+                {category === 'location' && <MapPin size={12} />}
+                {category === 'image' && <ImageIcon size={12} />}
+                {category === 'item' && <Package size={12} />}
+                {category === 'equipment' && <Shield size={12} />}
+                <span>
+                  {category === 'npc'
+                    ? 'NPC DOSSIER CARD'
+                    : category === 'location'
+                    ? 'LOCATION RECONNAISSANCE'
+                    : category === 'item'
+                    ? 'ITEM CARD'
+                    : category === 'equipment'
+                    ? 'EQUIPMENT CARD'
+                    : 'ARCHIVE EVIDENCE IMAGE'}
+                </span>
+                {subtitle && category !== 'equipment' && category !== 'item' && (
+                  <>
+                    <span>·</span>
+                    <span className="text-[#8C9692]">{subtitle}</span>
+                  </>
+                )}
+              </div>
+              <h3 className="font-display text-lg sm:text-xl font-bold text-[#E2E6E4] mt-0.5">
+                {title}
+              </h3>
             </div>
-            <h3 className="font-display text-lg sm:text-xl font-bold text-[#E2E6E4] mt-0.5">
-              {title}
-            </h3>
+
+            <p className="text-xs sm:text-sm text-[#A5B0AC] whitespace-pre-wrap leading-relaxed">
+              {publicContent || 'No description provided.'}
+            </p>
+
+            {/* Equipment Card Effect Box */}
+            {category === 'equipment' && subtitle && (
+              <div className="bg-[#121916] border border-[#16A34A]/60 rounded px-3 py-2 text-xs">
+                <div className="font-mono-tabular text-[10px] font-bold text-[#4ADE80] uppercase">
+                  EQUIPMENT EFFECT / BONUS
+                </div>
+                <div className="text-[#E2E6E4] font-medium mt-0.5">
+                  {subtitle}
+                </div>
+              </div>
+            )}
+
+            {showGmSecrets && gmSecretNotes && (
+              <div className="mt-3 bg-[#19151D] border border-[#D97706]/60 rounded p-2.5 text-xs">
+                <div className="font-mono-tabular text-[10px] font-semibold text-[#FBBF24] uppercase mb-1">
+                  GM SECRET NOTES / STATS (HIDDEN FROM PLAYERS)
+                </div>
+                <div className="text-[#E2E6E4] whitespace-pre-wrap leading-relaxed">
+                  {gmSecretNotes}
+                </div>
+              </div>
+            )}
           </div>
 
-          <p className="text-xs sm:text-sm text-[#A5B0AC] whitespace-pre-wrap leading-relaxed">
-            {publicContent || 'No public description provided.'}
-          </p>
-
-          {showGmSecrets && gmSecretNotes && (
-            <div className="mt-3 bg-[#19151D] border border-[#D97706]/60 rounded p-2.5 text-xs">
-              <div className="font-mono-tabular text-[10px] font-semibold text-[#FBBF24] uppercase mb-1">
-                GM SECRET NOTES / STATS (HIDDEN FROM PLAYERS)
-              </div>
-              <div className="text-[#E2E6E4] whitespace-pre-wrap leading-relaxed">
-                {gmSecretNotes}
-              </div>
+          {/* Add to Player's Own Equipment Button for Item & Equipment Cards */}
+          {isEquipableCard && onAddToCharacterEquipment && (
+            <div className="pt-2 border-t border-[#232B28] flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleEquipClick}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-mono-tabular font-semibold cursor-pointer"
+              >
+                {addedToGear ? (
+                  <>
+                    <Check size={13} />
+                    <span>Added to Gear!</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={13} />
+                    <span>
+                      Add to My Equipment
+                      {equipTargetLabel ? ` (${equipTargetLabel})` : ''}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>
